@@ -1,4 +1,4 @@
-SRC_DIRS := operators panels properties utils wheels
+SRC_DIRS := data operators panels properties utils wheels
 ROOT_FILES := __init__.py LICENSE.txt blender_manifest.toml
 EXCLUDE_FILES := .gitignore README.md
 EXCLUDE_PATTERNS := __pycache__ *.pyc

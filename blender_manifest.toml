@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "rendergate"
-version = "0.1.0"
+version = "0.1.1"
 name = "Rendergate"
 tagline = "Allows you to render in the cloud with Rendergate.ch"
 maintainer = "Polygoningenieur Gustav Hahn <gustav.hahn@polygoningenieur.de>"
