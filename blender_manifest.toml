@@ -1,0 +1,48 @@
+schema_version = "1.0.0"
+
+id = "rendergate"
+version = "0.1.0"
+name = "Rendergate"
+tagline = "Allows you to render in the cloud with Rendergate.ch"
+maintainer = "Polygoningenieur Gustav Hahn <gustav.hahn@polygoningenieur.de>"
+type = "add-on"
+
+# License conforming to https://spdx.org/licenses/ (use "SPDX: prefix)
+# https://docs.blender.org/manual/en/dev/advanced/extensions/licenses.html
+license = ["SPDX:GPL-2.0-or-later"]
+
+# link to documentation, support, source files, etc
+website = "https://github.com/Polygoningenieur/rendergate-blender-addon"
+
+# https://docs.blender.org/manual/en/dev/advanced/extensions/tags.html
+tags = ["Render"]
+
+blender_version_min = "4.4.0"
+# # Optional: Blender version that the extension does not support, earlier versions are supported.
+# blender_version_max = "5.1.0"
+
+# pip3 download boto3 --dest ./wheels --only-binary=:all: --python-version=3.11
+wheels = [
+    "./wheels/boto3-1.37.23-py3-none-any.whl",
+    "./wheels/botocore-1.37.23-py3-none-any.whl",
+    "./wheels/certifi-2025.1.31-py3-none-any.whl",
+    "./wheels/charset_normalizer-3.4.1-py3-none-any.whl",
+    "./wheels/ecdsa-0.19.1-py2.py3-none-any.whl",
+    "./wheels/envs-1.4-py3-none-any.whl",
+    "./wheels/humanize-4.12.2-py3-none-any.whl",
+    "./wheels/idna-3.10-py3-none-any.whl",
+    "./wheels/jmespath-1.0.1-py3-none-any.whl",
+    "./wheels/pyasn1-0.4.8-py2.py3-none-any.whl",
+    "./wheels/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+    "./wheels/python_jose-3.4.0-py2.py3-none-any.whl",
+    "./wheels/requests-2.32.3-py3-none-any.whl",
+    "./wheels/rsa-4.9-py3-none-any.whl",
+    "./wheels/s3transfer-0.11.4-py3-none-any.whl",
+    "./wheels/six-1.17.0-py2.py3-none-any.whl",
+    "./wheels/urllib3-2.3.0-py3-none-any.whl",
+    "./wheels/warrant-0.4.0-py2.py3-none-any.whl",
+]
+
+[permissions]
+network = "Upload your blend-file and download rendered results from rendergate.ch"
+files = "Access your current blend-file and save rendered results on disk"
