@@ -24,17 +24,16 @@ And I made some changes.
 """
 
 
+import gc
+import bpy
+import typing
 import asyncio
+import logging
 import traceback
 import concurrent.futures
-import logging
-import gc
-import typing
-import bpy
+from typing import Any
 from concurrent.futures import ThreadPoolExecutor
 from asyncio import AbstractEventLoop, Task
-from logging import StreamHandler, Formatter, Logger
-from typing import Any
 from bpy.types import WindowManager, Context
 from .global_vars import rendergate_logger
 from .utils import class_to_register
@@ -132,15 +131,19 @@ def erase_async_loop() -> None:
 
 @class_to_register
 class AsyncLoopModalOperator(bpy.types.Operator):
+    """
+    Kicks the asyncio loop every 0.00001 seconds.
+    This is required to make sure the loop runs in the background.
+    """
+
     bl_idname = "rendergate.loop"
     bl_label = "Runs the asyncio main loop"
 
     timer = None
-    log: Logger = logging.getLogger(__name__ + ".AsyncLoopModalOperator")
 
     def __del__(self):
-        global _loop_kicking_operator_running
-        self.log.debug("Deleting Async Operator")
+        global _loop_kicking_operator_running 
+        rendergate_logger.debug("Deleting Async Operator")
         # This can be required when the operator is running while Blender
         # (re)loads a file. The operator then doesn't get the chance to
         # finish the async tasks, hence stop_after_this_kick is never True.
@@ -153,7 +156,7 @@ class AsyncLoopModalOperator(bpy.types.Operator):
         global _loop_kicking_operator_running
 
         if _loop_kicking_operator_running:
-            self.log.debug("Another loop-kicking operator is already running.")
+            rendergate_logger.debug("Another loop-kicking operator is already running.")
             return {"PASS_THROUGH"}
 
         context.window_manager.modal_handler_add(self)
@@ -176,13 +179,13 @@ class AsyncLoopModalOperator(bpy.types.Operator):
         if event.type != "TIMER":
             return {"PASS_THROUGH"}
 
-        self.log.debug("KICKING LOOP")
+        rendergate_logger.debug("KICKING LOOP")
         # stop after this kick?
         if kick_async_loop():
             context.window_manager.event_timer_remove(self.timer)
             _loop_kicking_operator_running = False
 
-            self.log.debug("Stopped asyncio loop kicking")
+            rendergate_logger.debug("Stopped asyncio loop kicking")
             return {"FINISHED"}
 
         return {"RUNNING_MODAL"}
@@ -192,7 +195,6 @@ class AsyncModalOperatorMixin:
     async_task = None  # asyncio task for fetching thumbnails
     # asyncio future for signalling that we want to cancel everything.
     signalling_future = None
-    log = logging.getLogger("%s.AsyncModalOperatorMixin" % __name__)
 
     _state = "INITIALIZING"
     stop_upon_exception = True
@@ -203,7 +205,7 @@ class AsyncModalOperatorMixin:
             1 / 15, window=context.window
         )
 
-        self.log.info("Starting")
+        rendergate_logger.info("Starting")
 
         # custom context pointer properties that can be set with:
         # layout.context_pointer_set(data, name)
@@ -242,7 +244,7 @@ class AsyncModalOperatorMixin:
             ex = task.exception()
             if ex is not None:
                 self._state = "EXCEPTION"
-                self.log.error("Exception while running task: %s", ex)
+                rendergate_logger.error("Exception while running task: %s", ex)
                 if self.stop_upon_exception:
                     self.quit()
                     self._finish(context)
@@ -265,7 +267,7 @@ class AsyncModalOperatorMixin:
     ):
         """Stops the currently running async task, and starts another one."""
 
-        self.log.debug(
+        rendergate_logger.debug(
             "Setting up a new task %r, so any existing task must be stopped", async_task
         )
         self._stop_async_task()
@@ -273,31 +275,33 @@ class AsyncModalOperatorMixin:
         # Download the previews asynchronously.
         self.signalling_future = future or asyncio.Future()
         self.async_task = asyncio.ensure_future(async_task)
-        self.log.debug("Created new task %r", self.async_task)
+        rendergate_logger.debug("Created new task %r", self.async_task)
 
         # Start the async manager so everything happens.
         ensure_async_loop()
 
     def _stop_async_task(self):
-        self.log.debug("Stopping async task")
+        rendergate_logger.debug("Stopping async task")
         if self.async_task is None:
-            self.log.debug("No async task, trivially stopped")
+            rendergate_logger.debug("No async task, trivially stopped")
             return
 
         # Signal that we want to stop.
         self.async_task.cancel()
         if not self.signalling_future.done():
-            self.log.info("Signalling that we want to cancel anything that's running.")
+            rendergate_logger.info(
+                "Signalling that we want to cancel anything that's running."
+            )
             self.signalling_future.cancel()
 
         # Wait until the asynchronous task is done.
         if not self.async_task.done():
-            self.log.info("blocking until async task is done.")
+            rendergate_logger.info("blocking until async task is done.")
             loop = asyncio.get_event_loop()
             try:
                 loop.run_until_complete(self.async_task)
             except asyncio.CancelledError:
-                self.log.info("Asynchronous task was cancelled")
+                rendergate_logger.info("Asynchronous task was cancelled")
                 return
 
         # noinspection PyBroadException
@@ -305,6 +309,6 @@ class AsyncModalOperatorMixin:
             # This re-raises any exception of the task.
             self.async_task.result()
         except asyncio.CancelledError:
-            self.log.info("Asynchronous task was cancelled")
+            rendergate_logger.info("Asynchronous task was cancelled")
         except Exception:
-            self.log.exception("Exception from asynchronous task")
+            rendergate_logger.exception("Exception from asynchronous task")

@@ -40,21 +40,41 @@ from ..properties.properties import RendergateProperties
 class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
     bl_idname = "rendergate.new_job"
     bl_label = "New Job"
-    bl_description = "Upload this blend-file and create a new render job"
+    bl_description = ""
     bl_options = {"REGISTER", "INTERNAL"}
 
-    def exception_callback(self, context: Context, context_pointers: dict[str, Any]):
+    @classmethod
+    def poll(cls, context: Context):
+        """Enable the operator only if we are not already running other async ops."""
+
+        props: RendergateProperties = context.scene.rendergate_properties
+        return not props.async_op_running
+
+    @classmethod
+    def description(cls, context: Context, properties: RendergateProperties):
+        """Change operator description depending on required fields."""
+
+        props: RendergateProperties = context.scene.rendergate_properties
+
+        if props.async_op_running:
+            return "Wait until other Rendergate addon operation is finished"
+        else:
+            return "Upload this blend-file and create a new render job"
+
+    def _cleanup(self, context: Context, context_pointers: dict[str, Any] = {}) -> None:
         """Cleanup on uncaught exceptions of async operator."""
 
         props: RendergateProperties = context.scene.rendergate_properties
         props.create_job_progress = 1.0
+        props.async_op_running = False
         context.area.tag_redraw()
 
-    @catch_exception(exception_callback)
+    @catch_exception(_cleanup)
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
         """Upload this blend-file and create a new render job."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        props.async_op_running = True
 
         props.create_job_progress_text = "Creating Job..."
         await progress(props, "create_job_progress", 0.1, context)
@@ -91,6 +111,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
                 self.report({"INFO"}, response)
             else:
                 self.report({"ERROR"}, response)
+            self._cleanup(context)
             self.quit()
             return
 
@@ -143,6 +164,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
                 # error occured
                 if isinstance(part_response, str):
                     await progress(props, "create_job_progress", 1.0, context)
+                    self._cleanup(context)
                     self.report({"ERROR"}, part_response)
                     self.quit()
                     return
@@ -170,6 +192,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         # error occured
         if isinstance(complete_resp, str):
             await progress(props, "create_job_progress", 1.0, context)
+            self._cleanup(context)
             self.report({"ERROR"}, complete_resp)
             self.quit()
             return
@@ -179,6 +202,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         else:
             await progress(props, "create_job_progress", 1.0, context)
             rendergate_logger.info(f"Upload: {complete_resp.status_code}")
+            self._cleanup(context)
             self.report(
                 {"WARNING"}, "Could not upload Blend-File, please check online."
             )
@@ -201,6 +225,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         props.create_job_progress_text = "Job created"
         await progress(props, "create_job_progress", 0.999, context, sleep=1)
         await progress(props, "create_job_progress", 1.0, context)
+        self._cleanup(context)
         self.report({"INFO"}, "New job created.")
         self.quit()
         return
@@ -221,7 +246,9 @@ class RENDERGATE_OT_invoke_new_job(Operator):
 
         props: RendergateProperties = context.scene.rendergate_properties
 
-        if props.create_job_progress < 1.0:
+        if props.async_op_running:
+            return "Wait until other Rendergate addon operation is finished"
+        elif props.create_job_progress < 1.0:
             return "Creating project.."
         elif not is_string_blank(props.job_name):
             return "Create a new job under the specified project name"
@@ -233,6 +260,8 @@ class RENDERGATE_OT_invoke_new_job(Operator):
         """Enable the operator if all required fields are filled in."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        if props.async_op_running:
+            return False
         return not is_string_blank(props.job_name) and props.create_job_progress == 1.0
 
     def invoke(self, context: Context, event: Event):

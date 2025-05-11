@@ -36,18 +36,20 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
     bl_description = ""
     bl_options = {"REGISTER", "INTERNAL"}
 
-    def exception_callback(self, context: Context, context_pointers: dict[str, Any]):
+    def _cleanup(self, context: Context, context_pointers: dict[str, Any] = {}) -> None:
         """Cleanup on uncaught exceptions of async operator."""
 
         props: RendergateProperties = context.scene.rendergate_properties
         props.render_job_progress = 1.0
+        props.async_op_running = False
         context.area.tag_redraw()
 
-    @catch_exception(exception_callback)
+    @catch_exception(_cleanup)
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
         """Render the job on Rendergate.ch."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        props.async_op_running = True
 
         props.render_job_progress_text = "Sending..."
         await progress(props, "render_job_progress", 0.1, context)
@@ -76,6 +78,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
                 self.report({"INFO"}, response)
             else:
                 self.report({"ERROR"}, response)
+            self._cleanup(context)
             self.quit()
             return
 
@@ -85,6 +88,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         props.render_job_progress_text = "Job rendering"
         await progress(props, "render_job_progress", 0.999, context, sleep=1)
         await progress(props, "render_job_progress", 1.0, context)
+        self._cleanup(context)
         self.report({"INFO"}, "Job rendering.")
         self.quit()
         return
@@ -101,8 +105,12 @@ class RENDERGATE_OT_invoke_render(Operator):
     def poll(cls, context: Context):
         """Enable the operator if the job is ready to render."""
 
+        props: RendergateProperties = context.scene.rendergate_properties
+
         selected_job: Job = jobs.get_selected_render_job(context)
 
+        if props.async_op_running:
+            return False
         if selected_job is not None:
             return True if selected_job.stage in ["UPLOADED"] else False
         else:
@@ -112,8 +120,12 @@ class RENDERGATE_OT_invoke_render(Operator):
     def description(cls, context: Context, properties):
         """Change operator description depending on required fields."""
 
+        props: RendergateProperties = context.scene.rendergate_properties
+
         if cls.poll(context):
             return f"Pay and render the selected job on rendergate.ch"
+        elif props.async_op_running:
+            return "Please wait until other Rendergate addon operation is finished"
         else:
             return (
                 f"Render job is not ready to render yet, or has been rendered already"

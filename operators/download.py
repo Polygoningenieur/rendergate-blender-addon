@@ -45,11 +45,12 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
     def poll(cls, context: Context):
         """Enable the operator if the job is ready to download."""
 
-        selected_job: Job = jobs.get_selected_render_job(context)
         props: RendergateProperties = context.scene.rendergate_properties
+        selected_job: Job = jobs.get_selected_render_job(context)
 
         if (
-            selected_job is not None
+            not props.async_op_running
+            and selected_job is not None
             and not is_string_blank(props.download_folder)
             and selected_job.stage in ["FINISHED"]
         ):
@@ -65,6 +66,10 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
 
         description: str = "Download render job zip-file to download folder"
+        if props.async_op_running:
+            description += (
+                "\nPlease wait until other Rendergate addon operation is finished"
+            )
         if selected_job is None:
             description += "\nNo render job selected"
         if is_string_blank(props.download_folder):
@@ -74,18 +79,20 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
 
         return description
 
-    def exception_callback(self, context: Context, context_pointers: dict[str, Any]):
-        """Cleanup on uncaught exceptions of async operator."""
+    def _cleanup(self, context: Context, context_pointers: dict[str, Any] = {}) -> None:
+        """Cleanup of operator after terminating or a raised error."""
 
         props: RendergateProperties = context.scene.rendergate_properties
         props.download_job_progress = 1.0
+        props.async_op_running = False
         context.area.tag_redraw()
 
-    @catch_exception(exception_callback)
+    @catch_exception(_cleanup)
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
         """Download the rendered results from Rendergate.ch."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        props.async_op_running = True
 
         props.download_job_progress_text = "Downloading..."
         await progress(props, "download_job_progress", 0.1, context)
@@ -109,6 +116,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
                 self.report({"INFO"}, response)
             else:
                 self.report({"ERROR"}, response)
+            self._cleanup(context)
             self.quit()
             return
 
@@ -119,6 +127,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
             props.download_job_progress_text = "Not downloaded!"
             await progress(props, "download_job_progress", 0.999, context, sleep=1)
             await progress(props, "download_job_progress", 1.0, context)
+            self._cleanup(context)
             self.report({"WARNING"}, f"Could not get download link. {response_json}")
             self.quit()
             return
@@ -136,6 +145,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
             props.download_job_progress_text = "Not downloaded!"
             await progress(props, "download_job_progress", 0.999, context, sleep=1)
             await progress(props, "download_job_progress", 1.0, context)
+            self._cleanup(context)
             self.report({"WARNING"}, f"The download folder does not exist. {repr(e)}")
             self.quit()
             return
@@ -143,6 +153,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
             props.download_job_progress_text = "Not downloaded!"
             await progress(props, "download_job_progress", 0.999, context, sleep=1)
             await progress(props, "download_job_progress", 1.0, context)
+            self._cleanup(context)
             self.report({"WARNING"}, f"Could not download zip-file. {repr(e)}")
             self.quit()
             return
@@ -152,6 +163,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         props.download_job_progress_text = "Downloaded"
         await progress(props, "download_job_progress", 0.999, context, sleep=1)
         await progress(props, "download_job_progress", 1.0, context)
+        self._cleanup(context)
         self.report({"INFO"}, "Zip-file downloaded.")
         self.quit()
         return

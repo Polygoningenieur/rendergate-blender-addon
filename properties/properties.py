@@ -29,6 +29,13 @@ from .property_updates import RendergatePropertyUpdates
 @class_to_register
 class RendergateProperties(PropertyGroup):
 
+    async_op_running: BoolProperty(
+        name="Async Operator Running",
+        description="If an asynchronous bpy operator is currently running",
+        default=False,
+        options={"HIDDEN"},
+    )
+
     username: StringProperty(
         name="Username",
         description="Your Rendergate username (e-mail address)",

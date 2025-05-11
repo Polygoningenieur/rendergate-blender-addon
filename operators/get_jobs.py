@@ -31,7 +31,7 @@ from ..data import jobs
 class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
     bl_idname = "rendergate.get_jobs"
     bl_label = ""
-    bl_description = "Get all jobs from rendergate.ch"
+    bl_description = ""
     bl_options = {"REGISTER", "INTERNAL"}
 
     @classmethod
@@ -42,6 +42,8 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
 
         if props.getting_jobs:
             return "Getting jobs.."
+        elif props.async_op_running:
+            return "Wait until other Rendergate addon operation is finished"
         else:
             return "Get your render jobs from rendergate.ch"
 
@@ -50,21 +52,22 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
         """Enable the operator only if we are not already getting projects."""
 
         props: RendergateProperties = context.scene.rendergate_properties
-        return not props.getting_jobs
+        return not props.getting_jobs and not props.async_op_running
 
-    def exception_callback(self, context: Context, context_pointers: dict[str, Any]):
+    def _cleanup(self, context: Context, context_pointers: dict[str, Any] = {}) -> None:
         """Cleanup on uncaught exceptions of async operator."""
 
         props: RendergateProperties = context.scene.rendergate_properties
         props.getting_jobs = False
+        props.async_op_running = False
         context.area.tag_redraw()
 
-    @catch_exception(exception_callback)
+    @catch_exception(_cleanup)
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
         """Upload this blend-file and create a new render job."""
 
         props: RendergateProperties = context.scene.rendergate_properties
-
+        props.async_op_running = True
         props.getting_jobs = True
         context.area.tag_redraw()
 
@@ -81,22 +84,28 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
 
         # error occured
         if isinstance(response, str):
-            props.getting_jobs = False
             rendergate_logger.error(f"{response}")
             if response.startswith("Token expired"):
                 props.aws_token = ""
                 if self is not None:
                     self.report({"INFO"}, response)
             else:
-                self.report({"ERROR"}, response)
+                if self is not None:
+                    self.report({"ERROR"}, response)
             if self is not None:
                 self.quit()
+                self._cleanup(context)
+            props.async_op_running = False
+            props.getting_jobs = False
             return
 
         response_json: dict = response.json()
 
         if not isinstance(response_json, list):
+            props.async_op_running = False
+            props.getting_jobs = False
             if self is not None:
+                self._cleanup(context)
                 self.report({"WARNING"}, "No jobs.")
                 self.quit()
             return
@@ -118,8 +127,10 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
             )
 
         props.getting_jobs = False
+        props.async_op_running = False
         context.area.tag_redraw()
         if self is not None:
+            self._cleanup(context)
             self.report({"INFO"}, "Job list updated.")
             self.quit()
         return
