@@ -26,6 +26,7 @@ from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render
 from ..operators.download import RENDERGATE_OT_download
 from ..operators.open_folder import RENDERGATE_OT_open_folder
+from ..operators.open_website import RENDERGATE_OT_open_website
 
 
 @class_to_register
@@ -113,6 +114,18 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
 
         buttons: UILayout = layout.split()
 
+        # open web
+        open_button: UILayout = buttons.row(align=True)
+        open_web: RENDERGATE_OT_open_website = open_button.operator(
+            operator=RENDERGATE_OT_open_website.bl_idname,
+            icon="INTERNET",
+        )
+        if selected_job:
+            open_web.url = f"https://rendergate.ch/en/details/{selected_job.identifier}"
+        else:
+            open_button.enabled = False
+
+        # render
         render: UILayout = buttons.row(align=True)
         if props.render_job_progress < 1.0:
             # fix for Blender display bug
