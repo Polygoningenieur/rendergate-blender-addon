@@ -13,6 +13,7 @@
 
 
 import bpy
+import asyncio
 import urllib.request
 from typing import Any
 from pathlib import PurePath
@@ -24,6 +25,7 @@ from ..utils.utils import (
     class_to_register,
     catch_exception,
     progress,
+    sync_progress,
     is_string_blank,
 )
 from ..data import jobs
@@ -94,8 +96,11 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
         props.async_op_running = True
 
-        props.download_job_progress_text = "Downloading..."
-        await progress(props, "download_job_progress", 0.1, context)
+        progress_start: int = 0.1
+        progress_end: int = 0.999
+
+        props.download_job_progress_text = "10% - Downloading..."
+        await progress(props, "download_job_progress", progress_start, context)
 
         selected_job: Job = jobs.get_selected_render_job(context)
 
@@ -124,8 +129,10 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
 
         download_link: str | None = response_json.get("link", None) or None
         if download_link is None:
-            props.download_job_progress_text = "Not downloaded!"
-            await progress(props, "download_job_progress", 0.999, context, sleep=1)
+            props.download_job_progress_text = "100% - Not downloaded!"
+            await progress(
+                props, "download_job_progress", progress_end, context, sleep=1
+            )
             await progress(props, "download_job_progress", 1.0, context)
             self._cleanup(context)
             self.report({"WARNING"}, f"Could not get download link. {response_json}")
@@ -137,21 +144,28 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
             PurePath(bpy.path.abspath(props.download_folder))
             / PurePath(f"{selected_job.name}.zip")
         )
+
         try:
+            # TODO make non-blocking (with aiohttp?)
             result: tuple[str, HTTPMessage] = urllib.request.urlretrieve(
-                download_link, file_path
+                download_link,
+                file_path,
             )
         except FileNotFoundError as e:
-            props.download_job_progress_text = "Not downloaded!"
-            await progress(props, "download_job_progress", 0.999, context, sleep=1)
+            props.download_job_progress_text = "100% - Not downloaded!"
+            await progress(
+                props, "download_job_progress", progress_end, context, sleep=1
+            )
             await progress(props, "download_job_progress", 1.0, context)
             self._cleanup(context)
             self.report({"WARNING"}, f"The download folder does not exist. {repr(e)}")
             self.quit()
             return
         except Exception as e:
-            props.download_job_progress_text = "Not downloaded!"
-            await progress(props, "download_job_progress", 0.999, context, sleep=1)
+            props.download_job_progress_text = "100% - Not downloaded!"
+            await progress(
+                props, "download_job_progress", progress_end, context, sleep=1
+            )
             await progress(props, "download_job_progress", 1.0, context)
             self._cleanup(context)
             self.report({"WARNING"}, f"Could not download zip-file. {repr(e)}")
@@ -160,8 +174,8 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         else:
             rendergate_logger.info(f"Downloaded file to: {result[0]}")
 
-        props.download_job_progress_text = "Downloaded"
-        await progress(props, "download_job_progress", 0.999, context, sleep=1)
+        props.download_job_progress_text = "100% - Downloaded"
+        await progress(props, "download_job_progress", progress_end, context, sleep=1)
         await progress(props, "download_job_progress", 1.0, context)
         self._cleanup(context)
         self.report({"INFO"}, "Zip-file downloaded.")

@@ -51,7 +51,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
         props.async_op_running = True
 
-        props.render_job_progress_text = "Sending..."
+        props.render_job_progress_text = "10% - Sending..."
         await progress(props, "render_job_progress", 0.1, context)
 
         selected_job: Job = jobs.get_selected_render_job(context)
@@ -85,7 +85,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         response_json: dict = response.json()
         rendergate_logger.info(f"Render started {response_json}")
 
-        props.render_job_progress_text = "Job rendering"
+        props.render_job_progress_text = "100% - Job rendering"
         await progress(props, "render_job_progress", 0.999, context, sleep=1)
         await progress(props, "render_job_progress", 1.0, context)
         self._cleanup(context)

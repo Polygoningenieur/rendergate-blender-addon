@@ -76,7 +76,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
         props.async_op_running = True
 
-        props.create_job_progress_text = "Creating Job..."
+        props.create_job_progress_text = "10% - Creating Job..."
         await progress(props, "create_job_progress", 0.1, context)
 
         headers: dict = {"auth": props.aws_token}
@@ -125,7 +125,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         complete_url: str = upload_data.get("completeUrl")
 
         # multipart upload
-        props.create_job_progress_text = "Uploading Blend-file..."
+        props.create_job_progress_text = "20% - Uploading Blend-file..."
         await progress(props, "create_job_progress", 0.2, context)
 
         MB: int = 2**20
@@ -145,6 +145,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         with open(props.blend_file_path, "rb") as f:
             for i, upload_url in enumerate(upload_urls[:part_count]):
 
+                props.create_job_progress_text = f"{math.floor((props.create_job_progress + upload_step)*100)}% - Uploading Blend-file..."
                 await progress(
                     props,
                     "create_job_progress",
@@ -174,7 +175,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
                 rendergate_logger.info(f"Part: {i} - {len(segment)} bytes")
 
         # completing upload
-        props.create_job_progress_text = "Finishing Upload..."
+        props.create_job_progress_text = f"80% - Finishing Upload..."
         await progress(props, "create_job_progress", 0.8, context)
 
         complete_body: str = (
@@ -211,7 +212,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
 
         # needs to be last,
         # because the self.quit() in the other async_execute also quits this method
-        props.create_job_progress_text = "Updating Job List..."
+        props.create_job_progress_text = "90% - Updating Job List..."
         await progress(props, "create_job_progress", 0.9, context)
         try:
             # pass self as None,
@@ -222,7 +223,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         else:
             jobs.set_selected_render_job(context, job_id)
 
-        props.create_job_progress_text = "Job created"
+        props.create_job_progress_text = "100% - Job created"
         await progress(props, "create_job_progress", 0.999, context, sleep=1)
         await progress(props, "create_job_progress", 1.0, context)
         self._cleanup(context)
