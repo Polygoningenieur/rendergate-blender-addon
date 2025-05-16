@@ -23,12 +23,17 @@ blender_version_min = "4.4.0"
 
 # pip3 download boto3 --dest ./wheels --only-binary=:all: --python-version=3.11
 wheels = [
+    "./wheels/anyio-4.9.0-py3-none-any.whl",
     "./wheels/boto3-1.37.23-py3-none-any.whl",
     "./wheels/botocore-1.37.23-py3-none-any.whl",
     "./wheels/certifi-2025.1.31-py3-none-any.whl",
+    "./wheels/certifi-2025.4.26-py3-none-any.whl",
     "./wheels/charset_normalizer-3.4.1-py3-none-any.whl",
     "./wheels/ecdsa-0.19.1-py2.py3-none-any.whl",
     "./wheels/envs-1.4-py3-none-any.whl",
+    "./wheels/h11-0.16.0-py3-none-any.whl",
+    "./wheels/httpcore-1.0.9-py3-none-any.whl",
+    "./wheels/httpx-0.28.1-py3-none-any.whl",
     "./wheels/humanize-4.12.2-py3-none-any.whl",
     "./wheels/idna-3.10-py3-none-any.whl",
     "./wheels/jmespath-1.0.1-py3-none-any.whl",
@@ -39,6 +44,8 @@ wheels = [
     "./wheels/rsa-4.9-py3-none-any.whl",
     "./wheels/s3transfer-0.11.4-py3-none-any.whl",
     "./wheels/six-1.17.0-py2.py3-none-any.whl",
+    "./wheels/sniffio-1.3.1-py3-none-any.whl",
+    "./wheels/typing_extensions-4.13.2-py3-none-any.whl",
     "./wheels/urllib3-2.3.0-py3-none-any.whl",
     "./wheels/warrant-0.4.0-py2.py3-none-any.whl",
 ]

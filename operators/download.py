@@ -13,25 +13,21 @@
 
 
 import bpy
-import asyncio
-import urllib.request
-from typing import Any
+import httpx
+from typing import Any, Callable
 from pathlib import PurePath
 from requests import Response  # requests is included in Blender 4.4
-from http.client import HTTPMessage
 from ..utils.async_loop import AsyncModalOperatorMixin
 from bpy.types import Operator, Context
 from ..utils.utils import (
     class_to_register,
     catch_exception,
     progress,
-    sync_progress,
     is_string_blank,
 )
 from ..data import jobs
 from ..utils import rest_client
 from ..utils.models import Job
-from ..utils.enums import Stage
 from ..properties.properties import RendergateProperties
 from ..utils.global_vars import rendergate_logger
 
@@ -146,10 +142,12 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         )
 
         try:
-            # TODO make non-blocking (with aiohttp?)
-            result: tuple[str, HTTPMessage] = urllib.request.urlretrieve(
+            await self._download_file_async(
                 download_link,
                 file_path,
+                lambda d, t: self._progress_callback(
+                    d, t, progress_start, progress_end, props, context
+                ),
             )
         except FileNotFoundError as e:
             props.download_job_progress_text = "100% - Not downloaded!"
@@ -172,7 +170,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
             self.quit()
             return
         else:
-            rendergate_logger.info(f"Downloaded file to: {result[0]}")
+            rendergate_logger.info(f"Downloaded file to: {file_path}")
 
         props.download_job_progress_text = "100% - Downloaded"
         await progress(props, "download_job_progress", progress_end, context, sleep=1)
@@ -181,3 +179,55 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         self.report({"INFO"}, "Zip-file downloaded.")
         self.quit()
         return
+
+    async def _download_file_async(
+        self, url: str, file_path: str, progress_callback: Callable = None
+    ):
+        """Download a file asynchronous and non-blocking."""
+
+        async with httpx.AsyncClient() as client:
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                total: int = int(response.headers.get("Content-Length", 0))
+                downloaded: int = 0
+                with open(file_path, "wb") as f:
+                    async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if (
+                            isinstance(progress_callback, Callable)
+                            and progress_callback
+                            and total
+                        ):
+                            await progress_callback(downloaded, total)
+
+    async def _progress_callback(
+        self,
+        downloaded: int,
+        total: int,
+        progress_start: int,
+        progress_end: int,
+        props: RendergateProperties,
+        context: Context,
+    ):
+        """Report the progress of a download."""
+
+        progress_normalized: float = round(downloaded / total, 2)
+        progress_normalized *= progress_end - progress_start
+        progress_normalized += progress_start
+        progress_normalized = round(progress_normalized, 2)
+        percent: int = int(progress_normalized * 100)
+        mb: float = round(downloaded / (1024 * 1024), 2)
+        total_mb: float = round(total / (1024 * 1024), 2)
+
+        progress_text: str = f"{percent}% - {mb}/{total_mb} MB"
+        props.download_job_progress_text = progress_text
+
+        await progress(
+            props,
+            "download_job_progress",
+            progress_normalized,
+            context,
+        )
+
+        rendergate_logger.info(progress_text)
