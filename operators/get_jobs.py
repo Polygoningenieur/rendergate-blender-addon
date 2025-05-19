@@ -110,6 +110,9 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
                 self.quit()
             return
 
+        # clear jobs before adding the updated ones
+        jobs.clear()
+
         for index, job_data in enumerate(response_json):
             if not isinstance(job_data, dict):
                 continue
@@ -118,8 +121,7 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
             # add new job to list
             new_job: Job = jobs.add_job(jobs.construct_render_job(job_data, index))
 
-        # set last job,
-        # but only if there where no jobs before,
+        # set last job, but only if there where no jobs before,
         # otherwise we want to still have the job that was selected before
         if no_jobs:
             jobs.set_selected_render_job(

@@ -25,6 +25,12 @@ from ..utils.global_vars import rendergate_logger
 _jobs: list[Job] = []
 
 
+def clear() -> None:
+    """Clear jobs."""
+
+    _jobs.clear()
+
+
 def get_jobs() -> list[Job]:
     """Return all rendergate render jobs."""
 
