@@ -16,7 +16,7 @@ import decimal
 from decimal import Decimal, InvalidOperation
 import humanize
 from dateutil import tz
-from datetime import datetime, tzinfo
+from datetime import datetime, tzinfo, timedelta
 from bpy.types import Context
 from ..utils.models import Job
 from ..utils.enums import Stage
@@ -97,8 +97,6 @@ def construct_render_job(job_data: dict, index: int) -> Job:
     except InvalidOperation as e:
         cost: Decimal = Decimal("0.00")
 
-    time_estimation: float = job_data.get("timeEst", 0.0)
-    time: float = job_data.get("time", 0.0)
     preview: str = job_data.get("preview", "")
 
     # created time
@@ -113,8 +111,20 @@ def construct_render_job(job_data: dict, index: int) -> Job:
     date_time_local = date_time_utc.astimezone(to_zone)
     created_ago: str = humanize.naturaltime(date_time_local)
 
+    # human readable time estimation
+    time_estimation: float = job_data.get("timeEst", 0.0)
+    time_estimation_delta: timedelta = timedelta(milliseconds=time_estimation)
+    time_estimation_human: str = humanize.precisedelta(
+        time_estimation_delta, minimum_unit="minutes"
+    )
+
+    # human readable time
+    time: float = job_data.get("time", 0.0)
+    time_delta: timedelta = timedelta(milliseconds=time)
+    time_human: str = humanize.precisedelta(time_delta, minimum_unit="minutes")
+
     description: str = (
-        f"Job {index}\nCreated: {created_ago}\nProject: {project_name}\nStage: {stage}\nProgress: {progress}\nCost Estimation: ${cost_estimation}\nCost: {cost}\nTime Estimation: {time_estimation}\nTime: {time}"
+        f"Job {index}\nCreated: {created_ago}\nProject: {project_name}\nStage: {stage}\nProgress: {progress}\nCost Estimation: ${cost_estimation}\nCost: {cost}\nTime Estimation: {time_estimation_human}\nTime: {time_human}"
     )
 
     return Job(
@@ -130,6 +140,8 @@ def construct_render_job(job_data: dict, index: int) -> Job:
         cost_estimation=cost_estimation,
         cost=cost,
         time_estimation=time_estimation,
+        time_estimation_human=time_estimation_human,
         time=time,
+        time_human=time_human,
         preview_link=preview,
     )

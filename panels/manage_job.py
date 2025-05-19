@@ -13,9 +13,7 @@
 
 
 import bpy
-import humanize
 from decimal import Decimal
-from datetime import timedelta
 from bpy.types import Panel, Context, UILayout
 from .panel import RendergatePanel
 from ..utils.utils import class_to_register
@@ -95,9 +93,8 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                     icon="TAG",
                 )
             if selected_job.time_estimation > Decimal("0.00"):
-                delta: timedelta = timedelta(milliseconds=selected_job.time_estimation)
                 job_details.label(
-                    text=f"Time Estimation: {humanize.precisedelta(delta, minimum_unit='minutes')}",
+                    text=f"Time Estimation: {selected_job.time_estimation_human}",
                     icon="TEMP",
                 )
             else:

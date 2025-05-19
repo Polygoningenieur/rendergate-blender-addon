@@ -30,7 +30,9 @@ class Job:
     cost_estimation: Decimal
     cost: Decimal
     time_estimation: float
+    time_estimation_human: str
     time: float
+    time_human: str
     preview_link: str
 
     def __eq__(self, other):

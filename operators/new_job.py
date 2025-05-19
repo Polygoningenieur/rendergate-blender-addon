@@ -117,7 +117,6 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
 
         response_json: dict = response.json()
 
-        # or is it the job id?
         job_id: str = response_json.get("id")
         upload_data: dict[str] = response_json.get("uploadData")
         upload_id: str = upload_data.get("uploadId")
