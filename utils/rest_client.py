@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
+import json
 import asyncio
 from asyncio import AbstractEventLoop, Future
 from requests import Response, Session  # requests gets delivered with Blender 4.4
@@ -40,7 +41,8 @@ async def request(
         post: Use the default http POST request or GET
 
     Returns:
-        The response object if the request is successful, otherwise None.
+        The response object if the request is successful,
+        otherwise a string with the error/failed message.
     """
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
@@ -92,20 +94,50 @@ async def request(
     try:
         response: Response = await future
         if response.status_code >= 100 and response.status_code < 200:
-            return f"{response.status_code}: Informational Response: {response.text}"
+            return format_failed_response(
+                response, response.status_code, "Informational Response"
+            )
         elif response.status_code >= 200 and response.status_code < 300:
             return response
         elif response.status_code >= 300 and response.status_code < 400:
-            return f"{response.status_code}: Redirection: {response.text}"
+            return format_failed_response(response, response.status_code, "Redirection")
         elif response.status_code == 401:
             return f"Token expired. Please log in again."
         elif response.status_code >= 400 and response.status_code < 500:
-            return f"{response.status_code}: Client Error: {response.text}"
+            return format_failed_response(
+                response, response.status_code, "Client Error"
+            )
         elif response.status_code >= 500 and response.status_code < 600:
-            return f"{response.status_code}: Server Error: {response.text}"
+            return format_failed_response(
+                response, response.status_code, "Server Error"
+            )
         else:
             response.raise_for_status()
     except (HTTPError, ConnectionError, Timeout, RequestException) as e:
         return f"Error requesting from API {repr(e)}.\n{url=}\n{payload=}\n{headers=}\n{files=}\n{request=}\n"
     except Exception as e:
         return f"Unknown error requesting. {repr(e)}"
+
+
+def format_failed_response(
+    response: Response, status_code: int, status_type: str
+) -> str:
+    """Return string representation of failed response."""
+
+    try:
+        status_dict: dict = json.loads(response.text)
+    except Exception as e:
+        return f"Error parsing failed response message {repr(e)}"
+
+    # add more info
+    status_dict.update({"status_code": status_code})
+    status_dict.update({"status_type": status_type})
+
+    failure_text: str = ""
+    for key, value in status_dict.items():
+        if key == "message":
+            failure_text += f"{str(value).capitalize()}.\n"
+        else:
+            failure_text += f"{str(key).replace('_', ' ').capitalize()}: {value}\n"
+
+    return failure_text

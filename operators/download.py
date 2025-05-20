@@ -103,7 +103,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         headers: dict = {"auth": props.aws_token}
 
         # download render job
-        response: Response | None = await rest_client.request(
+        response: Response | str = await rest_client.request(
             url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/download",
             headers=headers,
             request="POST",

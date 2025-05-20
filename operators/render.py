@@ -63,14 +63,14 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         }
 
         # render the job
-        response: Response | None = await rest_client.request(
+        response: Response | str = await rest_client.request(
             url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/startPay",
             headers=headers,
             payload=payload,
             request="POST",
         )
 
-        # error occured
+        # error occured or response failed
         if isinstance(response, str):
             await progress(props, "render_job_progress", 1.0, context)
             if response.startswith("Token expired"):

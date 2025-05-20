@@ -96,7 +96,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
             payload.update({"project": props.project_name})
 
         # create rendergate job/project
-        response: Response | None = await rest_client.request(
+        response: Response | str = await rest_client.request(
             url=f"{props.rendergate_api_url}/project",
             headers=headers,
             payload=payload,
@@ -155,7 +155,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
                 f.seek(i * min_part_size)
                 segment: bytes = f.read(part_size)
 
-                part_response: Response | None = await rest_client.request(
+                part_response: Response | str = await rest_client.request(
                     url=upload_url,
                     payload=segment,
                     request="PUT",
@@ -184,7 +184,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
             complete_body += f"<Part><PartNumber>{i + 1}</PartNumber><ETag>{entity_tag}</ETag></Part>"
         complete_body += "</CompleteMultipartUpload>"
 
-        complete_resp: Response | None = await rest_client.request(
+        complete_resp: Response | str = await rest_client.request(
             url=complete_url,
             payload=complete_body,
             request="POST-DATA",
