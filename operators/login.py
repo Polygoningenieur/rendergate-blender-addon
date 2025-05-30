@@ -17,7 +17,7 @@ from warrant import Cognito
 from bpy.types import Operator, Context
 from ..utils.utils import class_to_register
 from ..utils.global_vars import rendergate_logger
-from ..properties.properties import RendergateProperties
+from ..properties.properties import RendergateProperties, RendergatePreferences
 
 
 @class_to_register
@@ -32,7 +32,7 @@ class RENDERGATE_OT_login(Operator):
         Logs into AWS cognito with warrant (using boto3).
         """
 
-        props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         # aws authentication
         REGION: str = "us-east-2"
@@ -44,18 +44,18 @@ class RENDERGATE_OT_login(Operator):
                 user_pool_id=USER_POOL_ID,
                 client_id=USER_POOL_WEB_CLIENT_ID,
                 user_pool_region=REGION,
-                username=props.username,
+                username=prefs.username,
             )
-            user.authenticate(password=props.password)
+            user.authenticate(password=prefs.password)
 
         except Exception as e:
             rendergate_logger.error(traceback.format_exc())
-            props.aws_token = ""
+            prefs.aws_token = ""
             self.report({"ERROR"}, f"Login failed: {str(e)}")
             return {"CANCELLED"}
 
         else:
-            props.aws_token = user.id_token
+            prefs.aws_token = user.id_token
 
             # get jobs
             try:

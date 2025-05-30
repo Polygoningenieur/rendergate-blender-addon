@@ -28,7 +28,7 @@ from ..utils.utils import (
 from ..data import jobs
 from ..utils import rest_client
 from ..utils.models import Job
-from ..properties.properties import RendergateProperties
+from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..utils.global_vars import rendergate_logger
 
 
@@ -44,12 +44,14 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         """Enable the operator if the job is ready to download."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+        
         selected_job: Job = jobs.get_selected_render_job(context)
 
         if (
             not props.async_op_running
             and selected_job is not None
-            and not is_string_blank(props.download_folder)
+            and not is_string_blank(prefs.download_folder)
             and selected_job.stage in ["FINISHED"]
         ):
             return True
@@ -62,6 +64,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
 
         selected_job: Job = jobs.get_selected_render_job(context)
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         description: str = "Download render job zip-file to download folder"
         if props.async_op_running:
@@ -70,7 +73,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
             )
         if selected_job is None:
             description += "\nNo render job selected"
-        if is_string_blank(props.download_folder):
+        if is_string_blank(prefs.download_folder):
             description += "\nPlease specify a download folder before downloading"
         if selected_job is not None and selected_job.stage not in ["FINISHED"]:
             description += "\nRender job is not done rendering yet"
@@ -80,7 +83,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
     def _cleanup(self, context: Context, context_pointers: dict[str, Any] = {}) -> None:
         """Cleanup of operator after terminating or a raised error."""
 
-        props: RendergateProperties = context.scene.rendergate_properties
+        props: RendergateProperties = context.scene.rendergate_properties        
         props.download_job_progress = 1.0
         props.async_op_running = False
         context.area.tag_redraw()
@@ -90,6 +93,8 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         """Download the rendered results from Rendergate.ch."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+        
         props.async_op_running = True
 
         progress_start: int = 0.1
@@ -100,7 +105,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
 
         selected_job: Job = jobs.get_selected_render_job(context)
 
-        headers: dict = {"auth": props.aws_token}
+        headers: dict = {"auth": prefs.aws_token}
 
         # download render job
         response: Response | str = await rest_client.request(
@@ -113,7 +118,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         if isinstance(response, str):
             await progress(props, "download_job_progress", 1.0, context)
             if response.startswith("Token expired"):
-                props.aws_token = ""
+                prefs.aws_token = ""
                 self.report({"INFO"}, response)
             else:
                 self.report({"ERROR"}, response)
@@ -137,7 +142,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
 
         # download to specified folder
         file_path: PurePath = PurePath(
-            PurePath(bpy.path.abspath(props.download_folder))
+            PurePath(bpy.path.abspath(prefs.download_folder))
             / PurePath(f"{selected_job.name}.zip")
         )
 

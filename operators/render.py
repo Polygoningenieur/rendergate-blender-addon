@@ -26,7 +26,7 @@ from ..data import jobs
 from ..utils import rest_client
 from ..utils.models import Job
 from ..utils.global_vars import rendergate_logger
-from ..properties.properties import RendergateProperties
+from ..properties.properties import RendergateProperties, RendergatePreferences
 
 
 @class_to_register
@@ -49,6 +49,8 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         """Render the job on Rendergate.ch."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+        
         props.async_op_running = True
 
         props.render_job_progress_text = "10% - Sending..."
@@ -56,7 +58,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
 
         selected_job: Job = jobs.get_selected_render_job(context)
 
-        headers: dict = {"auth": props.aws_token}
+        headers: dict = {"auth": prefs.aws_token}
         payload: dict = {
             "fromBeginning": True,
             "chips": float(props.render_credits),
@@ -74,7 +76,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         if isinstance(response, str):
             await progress(props, "render_job_progress", 1.0, context)
             if response.startswith("Token expired"):
-                props.aws_token = ""
+                prefs.aws_token = ""
                 self.report({"INFO"}, response)
             else:
                 self.report({"ERROR"}, response)

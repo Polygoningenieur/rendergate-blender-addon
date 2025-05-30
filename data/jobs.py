@@ -48,13 +48,13 @@ def add_job(job: Job) -> Job:
 def get_selected_render_job(context: Context) -> Job | None:
     """Get the job that is selected in the enum property."""
 
-    from ..properties.properties import RendergateProperties
+    from ..properties.properties import RendergatePreferences
 
-    props: RendergateProperties = context.scene.rendergate_properties
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
     try:
         selected_job: Job = next(
-            (j for j in get_jobs() if j.identifier == props.jobs), None
+            (j for j in get_jobs() if j.identifier == prefs.jobs), None
         )
     except IndexError as e:
         rendergate_logger.error(repr(e))
@@ -66,11 +66,11 @@ def get_selected_render_job(context: Context) -> Job | None:
 def set_selected_render_job(context: Context, identifier: str) -> None:
     """Set the selected enum job by job identifier."""
 
-    from ..properties.properties import RendergateProperties
+    from ..properties.properties import RendergatePreferences
 
-    props: RendergateProperties = context.scene.rendergate_properties
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
-    props.jobs = identifier
+    prefs.jobs = identifier
 
 
 def construct_render_job(job_data: dict, index: int) -> Job:

@@ -19,7 +19,7 @@ from .panel import RendergatePanel
 from ..utils.utils import class_to_register
 from ..utils.models import Job
 from ..data import jobs
-from ..properties.properties import RendergateProperties
+from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render
 from ..operators.download import RENDERGATE_OT_download
@@ -49,9 +49,9 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
     def poll(cls, context: Context):
         """Show panel only if user is logged in and online access is allowed."""
 
-        props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
-        return bpy.app.online_access and props.aws_token
+        return bpy.app.online_access and prefs.aws_token
 
     def draw(self, context: Context):
         """
@@ -59,6 +59,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
         """
 
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         layout: UILayout = self.layout
         layout.use_property_split = False
@@ -67,7 +68,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
         container: UILayout = layout.column(align=True)
         jobs_row: UILayout = container.row(align=True)
         jobs_row.scale_y = 1.2
-        jobs_row.prop(data=props, property="jobs", text="")
+        jobs_row.prop(data=prefs, property="jobs", text="")
         get_jobs_icon: str = "SORTTIME" if props.getting_jobs else "FILE_REFRESH"
         refresh_op: UILayout = jobs_row.row(align=True)
         refresh_op.scale_x = 1.2
@@ -158,7 +159,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
 
         download_folder_row: UILayout = layout.row(align=True)
         download_folder_row.prop(
-            data=props,
+            data=prefs,
             property="download_folder",
             text="Download to",
         )

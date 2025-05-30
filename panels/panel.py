@@ -15,12 +15,9 @@
 import bpy
 from bpy.types import Panel, Context, UILayout
 from ..utils.utils import class_to_register
-from ..properties.properties import RendergateProperties
+from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..operators.login import RENDERGATE_OT_login
-from ..operators.new_job import RENDERGATE_OT_invoke_new_job
 from ..operators.open_prefs import RENDERGATE_OT_open_prefs
-from ..operators.download import RENDERGATE_OT_download
-from ..operators.open_folder import RENDERGATE_OT_open_folder
 
 
 class RendergatePanel:
@@ -44,9 +41,9 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
     def draw_header(self, context: Context):
         """Show green logged in status if user is logged in."""
 
-        props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
-        if props.aws_token:
+        if prefs.aws_token:
 
             layout: UILayout = self.layout
             split = layout.split(factor=1 / 5)
@@ -64,7 +61,7 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
     def draw(self, context: Context):
         """Show UI for rendergate login, create new project, render and download."""
 
-        props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         layout: UILayout = self.layout
         layout.use_property_split = False
@@ -80,9 +77,9 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
             return
 
         # not logged in yet
-        if not props.aws_token:
-            layout.prop(data=props, property="username")
-            layout.prop(data=props, property="password")
+        if not prefs.aws_token:
+            layout.prop(data=prefs, property="username")
+            layout.prop(data=prefs, property="password")
 
             layout.operator(operator=RENDERGATE_OT_login.bl_idname)
             return

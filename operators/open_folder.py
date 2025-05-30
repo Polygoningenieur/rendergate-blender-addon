@@ -20,7 +20,7 @@ import bpy
 import subprocess
 from bpy.types import Operator, Context
 from ..utils.utils import class_to_register
-from ..properties.properties import RendergateProperties
+from ..properties.properties import RendergatePreferences
 
 
 @class_to_register
@@ -37,15 +37,15 @@ class RENDERGATE_OT_open_folder(Operator):
         Opens the download folder where the rendered images from Rendergate.ch are stored at.
         """
 
-        props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         try:
             if sys.platform == "win32":
-                os.startfile(bpy.path.abspath(props.download_folder))
+                os.startfile(bpy.path.abspath(prefs.download_folder))
             elif sys.platform == "darwin":
-                subprocess.Popen(["open", bpy.path.abspath(props.download_folder)])
+                subprocess.Popen(["open", bpy.path.abspath(prefs.download_folder)])
             elif sys.platform == "linux":
-                subprocess.Popen(["xdg-open", bpy.path.abspath(props.download_folder)])
+                subprocess.Popen(["xdg-open", bpy.path.abspath(prefs.download_folder)])
             else:
                 self.report(
                     {"WARNING"},

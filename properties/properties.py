@@ -14,7 +14,7 @@
 
 # pyright: reportInvalidTypeForm=false
 
-from bpy.types import PropertyGroup
+from bpy.types import PropertyGroup, AddonPreferences, Context
 from bpy.props import (
     StringProperty,
     IntProperty,
@@ -22,6 +22,7 @@ from bpy.props import (
     EnumProperty,
     FloatProperty,
 )
+from .. import __package__ as base_package
 from ..utils.utils import class_to_register
 from .property_updates import RendergatePropertyUpdates
 
@@ -36,27 +37,10 @@ class RendergateProperties(PropertyGroup):
         options={"HIDDEN"},
     )
 
-    username: StringProperty(
-        name="Username",
-        description="Your Rendergate username (e-mail address)",
-    )
-
-    password: StringProperty(
-        name="Password",
-        description="Your Rendergate login password",
-    )
-
     rendergate_api_url: StringProperty(
         name="Rendergate API URL",
         description="The URL of the rendergate API",
         default="https://vhvr3fdsg5.execute-api.us-east-2.amazonaws.com/default",
-        options={"HIDDEN"},
-    )
-
-    aws_token: StringProperty(
-        name="AWS Token",
-        description="The token we get when loggin into AWS Cognito.",
-        default="",
         options={"HIDDEN"},
     )
 
@@ -74,43 +58,11 @@ class RendergateProperties(PropertyGroup):
         options={"HIDDEN"},
     )
 
-    download_folder: StringProperty(
-        name="Download Folder",
-        description="The folder where rendered results from Rendergate.ch will be stored in",
-        subtype="DIR_PATH",
-        default="",
-    )
-
-    job_name: StringProperty(
-        name="Job Name*",
-        description="Name of the job that will be created",
-        default="",
-    )
-
-    project_name: StringProperty(
-        name="Project Name",
-        description="Name of the project the job will be added to",
-        default="",
-    )
-
     getting_jobs: BoolProperty(
         name="Getting Jobs",
         description="If we are currently getting the render jobs from rendergate.ch",
         default=False,
         options={"HIDDEN"},
-    )
-
-    jobs: EnumProperty(
-        name="Render Jobs",
-        description="All your rendergate.ch render jobs",
-        items=RendergatePropertyUpdates.create_job_list,
-        default=0,
-    )
-
-    jobs_dict: StringProperty(
-        name="Jobs",
-        description="The internal representation of the jobs, with all information",
-        default="[]",
     )
 
     create_job_progress: FloatProperty(
@@ -146,4 +98,74 @@ class RendergateProperties(PropertyGroup):
     render_credits: StringProperty(
         name="Render Credits",
         description="Your rendergate.ch render credit balance. You can add more on rendergate.ch",
+    )
+
+
+@class_to_register
+class RendergatePreferences(AddonPreferences):
+    """
+    These are like properties, but are not saved within the blend-file,
+    since they don't get attached to Scene for example.
+    """
+
+    @staticmethod
+    def preferences(context: Context):
+        """Get the rendergate preferences."""
+
+        try:
+            preferences = context.preferences
+        except AttributeError:
+            preferences = context.user_preferences
+
+        addon_prefs = preferences.addons[base_package].preferences
+        return addon_prefs
+
+    # this must match the addon name, use '__package__'
+    # when defining this in a submodule of a python package.
+    bl_idname = base_package
+
+    username: StringProperty(
+        name="Username",
+        description="Your Rendergate username (e-mail address)",
+        options={"HIDDEN", "SKIP_SAVE"},
+    )
+
+    password: StringProperty(
+        name="Password",
+        description="Your Rendergate login password",
+        options={"HIDDEN", "SKIP_SAVE"},
+    )
+
+    aws_token: StringProperty(
+        name="AWS Token",
+        description="The token we get when logging into AWS Cognito.",
+        default="",
+        options={"HIDDEN", "SKIP_SAVE"},
+    )
+
+    job_name: StringProperty(
+        name="Job Name*",
+        description="Name of the job that will be created",
+        default="",
+        options={"HIDDEN", "SKIP_SAVE"},
+    )
+
+    project_name: StringProperty(
+        name="Project Name",
+        description="Name of the project the job will be added to",
+        default="",
+    )
+
+    jobs: EnumProperty(
+        name="Render Jobs",
+        description="All your rendergate.ch render jobs",
+        items=RendergatePropertyUpdates.create_job_list,
+        default=0,
+    )
+
+    download_folder: StringProperty(
+        name="Download Folder",
+        description="The folder where rendered results from Rendergate.ch will be stored in",
+        subtype="DIR_PATH",
+        default="",
     )

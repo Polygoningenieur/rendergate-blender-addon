@@ -15,7 +15,7 @@
 
 
 import bpy
-from bpy.types import Operator
+from bpy.types import Operator, Context
 from ..utils.utils import class_to_register
 
 
@@ -30,10 +30,10 @@ class RENDERGATE_OT_open_website(Operator):
     url: bpy.props.StringProperty(options={"HIDDEN"})
 
     @classmethod
-    def description(cls, context, properties):
+    def description(cls, context: Context, properties):
         return "Open Website in Browser:\n" + properties.url
 
-    def execute(self, context):
+    def execute(self, context: Context):
 
         bpy.ops.wm.url_open(url=self.url)
 

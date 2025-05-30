@@ -21,7 +21,7 @@ from requests import Response  # requests is included in Blender 4.4
 from ..utils.async_loop import AsyncModalOperatorMixin
 from ..utils import rest_client
 from ..utils.utils import class_to_register, catch_exception
-from ..properties.properties import RendergateProperties
+from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..utils.global_vars import rendergate_logger
 from ..utils.models import Job
 from ..data import jobs
@@ -67,13 +67,15 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
         """Upload this blend-file and create a new render job."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
         props.async_op_running = True
         props.getting_jobs = True
         context.area.tag_redraw()
 
         no_jobs: bool = True if not jobs.get_jobs() else False
 
-        headers: dict = {"auth": props.aws_token}
+        headers: dict = {"auth": prefs.aws_token}
 
         # create rendergate job/project
         response: Response | str = await rest_client.request(
@@ -86,7 +88,7 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
         if isinstance(response, str):
             rendergate_logger.error(f"{response}")
             if response.startswith("Token expired"):
-                props.aws_token = ""
+                prefs.aws_token = ""
                 if self is not None:
                     self.report({"INFO"}, response)
             else:

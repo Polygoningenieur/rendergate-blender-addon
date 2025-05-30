@@ -33,7 +33,7 @@ from ..utils.utils import (
     is_string_blank,
     progress,
 )
-from ..properties.properties import RendergateProperties
+from ..properties.properties import RendergateProperties, RendergatePreferences
 
 
 @class_to_register
@@ -74,26 +74,28 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         """Upload this blend-file and create a new render job."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
         props.async_op_running = True
 
         props.create_job_progress_text = "10% - Creating Job..."
         await progress(props, "create_job_progress", 0.1, context)
 
-        headers: dict = {"auth": props.aws_token}
+        headers: dict = {"auth": prefs.aws_token}
 
         # construct payload
         file_name: str = path_leaf(props.blend_file_path)
         if not file_name:
             file_name = "unknown_blend_file"
         payload: dict = {
-            "name": props.job_name,
+            "name": prefs.job_name,
             "file": {
                 "type": "blend",
                 "name": file_name,
             },
         }
-        if not is_string_blank(props.project_name):
-            payload.update({"project": props.project_name})
+        if not is_string_blank(prefs.project_name):
+            payload.update({"project": prefs.project_name})
 
         # create rendergate job/project
         response: Response | str = await rest_client.request(
@@ -107,7 +109,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         if isinstance(response, str):
             await progress(props, "create_job_progress", 1.0, context)
             if response.startswith("Token expired"):
-                props.aws_token = ""
+                prefs.aws_token = ""
                 self.report({"INFO"}, response)
             else:
                 self.report({"ERROR"}, response)
@@ -245,12 +247,13 @@ class RENDERGATE_OT_invoke_new_job(Operator):
         """Change operator description depending on required fields."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         if props.async_op_running:
             return "Wait until other Rendergate addon operation is finished"
         elif props.create_job_progress < 1.0:
             return "Creating project.."
-        elif not is_string_blank(props.job_name):
+        elif not is_string_blank(prefs.job_name):
             return "Create a new job under the specified project name"
         else:
             return "Please specify a job name first"
@@ -260,9 +263,11 @@ class RENDERGATE_OT_invoke_new_job(Operator):
         """Enable the operator if all required fields are filled in."""
 
         props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
         if props.async_op_running:
             return False
-        return not is_string_blank(props.job_name) and props.create_job_progress == 1.0
+        return not is_string_blank(prefs.job_name) and props.create_job_progress == 1.0
 
     def invoke(self, context: Context, event: Event):
         """This extra operator is necessary to trigger the async operator."""
@@ -278,14 +283,14 @@ class RENDERGATE_OT_invoke_new_job(Operator):
     def draw(self, context: Context):
         """Layout of dialog."""
 
-        props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         layout: UILayout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False
 
         prerequisites: dict[str, bool] = {
-            "Logged into Rendergate": bool(props.aws_token),
+            "Logged into Rendergate": bool(prefs.aws_token),
             "Blend-File Saved": bpy.data.is_saved,
             "Current Changes Saved": bpy.data.is_saved and not bpy.data.is_dirty,
             "External Resources Packed": bpy.data.use_autopack,
