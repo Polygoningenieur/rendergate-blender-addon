@@ -12,6 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import bpy
+import random
+import string
 import traceback
 from warrant import Cognito
 from bpy.types import Operator, Context
@@ -55,7 +57,20 @@ class RENDERGATE_OT_login(Operator):
             return {"CANCELLED"}
 
         else:
+            # login sucessfull
             prefs.aws_token = user.id_token
+
+            # from Blender ID Authentication Addon:
+            # Prevent saving the password in user preferences
+            # Overwrite the password with a random string,
+            # as just setting to '' might only replace the first byte with 0
+            password_length: int = len(prefs.password)
+            random_string = "".join(
+                random.choice(string.ascii_uppercase + string.digits)
+                for _ in range(password_length + 16)
+            )
+            prefs.password = random_string
+            prefs.password = ""
 
             # get jobs
             try:

@@ -15,7 +15,7 @@
 import bpy
 from bpy.types import Panel, Context, UILayout
 from ..utils.utils import class_to_register
-from ..properties.properties import RendergateProperties, RendergatePreferences
+from ..properties.properties import RendergatePreferences
 from ..operators.login import RENDERGATE_OT_login
 from ..operators.open_prefs import RENDERGATE_OT_open_prefs
 
