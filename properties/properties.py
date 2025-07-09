@@ -37,6 +37,7 @@ class RendergateProperties(PropertyGroup):
         options={"HIDDEN"},
     )
 
+    # TODO change to production
     rendergate_api_url: StringProperty(
         name="Rendergate API URL",
         description="The URL of the rendergate API",

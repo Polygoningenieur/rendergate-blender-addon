@@ -22,7 +22,8 @@ from ..data import jobs
 from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render
-from ..operators.download import RENDERGATE_OT_download
+from ..operators.download_zip import RENDERGATE_OT_download_zip
+from ..operators.download_images import RENDERGATE_OT_download_images
 from ..operators.open_folder import RENDERGATE_OT_open_folder
 from ..operators.open_website import RENDERGATE_OT_open_website
 
@@ -119,6 +120,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             icon="INTERNET",
         )
         if selected_job:
+            # different for production and dev
             open_web.url = f"https://rendergate.ch/en/details/{selected_job.identifier}"
         else:
             open_button.enabled = False
@@ -153,7 +155,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             )
         else:
             download.operator(
-                operator=RENDERGATE_OT_download.bl_idname,
+                operator=RENDERGATE_OT_download_images.bl_idname,
                 icon="RENDER_RESULT",
             )
 

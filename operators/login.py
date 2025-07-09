@@ -37,6 +37,7 @@ class RENDERGATE_OT_login(Operator):
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         # aws authentication
+        # TODO change to production
         REGION: str = "us-east-2"
         USER_POOL_ID: str = "us-east-2_0iJztlRUB"
         USER_POOL_WEB_CLIENT_ID: str = "6m7eldka3q9f20nmev7smovnf6"
@@ -65,7 +66,7 @@ class RENDERGATE_OT_login(Operator):
             # Overwrite the password with a random string,
             # as just setting to '' might only replace the first byte with 0
             password_length: int = len(prefs.password)
-            random_string = "".join(
+            random_string: str = "".join(
                 random.choice(string.ascii_uppercase + string.digits)
                 for _ in range(password_length + 16)
             )

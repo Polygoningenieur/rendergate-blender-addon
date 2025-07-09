@@ -13,10 +13,11 @@
 
 
 import bpy
-import httpx
-from typing import Any, Callable
+import boto3
 from pathlib import PurePath
 from requests import Response  # requests is included in Blender 4.4
+from typing import Any
+from json.decoder import JSONDecodeError
 from ..utils.async_loop import AsyncModalOperatorMixin
 from bpy.types import Operator, Context
 from ..utils.utils import (
@@ -33,8 +34,8 @@ from ..utils.global_vars import rendergate_logger
 
 
 @class_to_register
-class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
-    bl_idname = "rendergate.download"
+class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
+    bl_idname = "rendergate.download_images"
     bl_label = "Download"
     bl_description = ""
     bl_options = {"REGISTER", "INTERNAL"}
@@ -45,7 +46,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
 
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-        
+
         selected_job: Job = jobs.get_selected_render_job(context)
 
         if (
@@ -66,7 +67,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
-        description: str = "Download render job zip-file to download folder"
+        description: str = "Download rendered images to the download folder"
         if props.async_op_running:
             description += (
                 "\nPlease wait until other Rendergate addon operation is finished"
@@ -83,7 +84,7 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
     def _cleanup(self, context: Context, context_pointers: dict[str, Any] = {}) -> None:
         """Cleanup of operator after terminating or a raised error."""
 
-        props: RendergateProperties = context.scene.rendergate_properties        
+        props: RendergateProperties = context.scene.rendergate_properties
         props.download_job_progress = 1.0
         props.async_op_running = False
         context.area.tag_redraw()
@@ -92,9 +93,13 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
         """Download the rendered results from Rendergate.ch."""
 
+        # TODO make async
+        # TODO make non-blocking
+        # TODO check for downloadable images frequently, not only on button click (app timer handler)
+
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-        
+
         props.async_op_running = True
 
         progress_start: int = 0.1
@@ -109,9 +114,9 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
 
         # download render job
         response: Response | str = await rest_client.request(
-            url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/download",
+            url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/downloadPerm",
             headers=headers,
-            request="POST",
+            request="GET",
         )
 
         # error occured
@@ -126,113 +131,78 @@ class RENDERGATE_OT_download(Operator, AsyncModalOperatorMixin):
             self.quit()
             return
 
-        response_json: dict = response.json()
-
-        download_link: str | None = response_json.get("link", None) or None
-        if download_link is None:
-            props.download_job_progress_text = "100% - Not downloaded!"
-            await progress(
-                props, "download_job_progress", progress_end, context, sleep=1
-            )
+        try:
+            response_json: dict = response.json()
+        except JSONDecodeError as e:
             await progress(props, "download_job_progress", 1.0, context)
+            self.report({"ERROR"}, f"Couldn't decode boto3 s3 response: {e}")
             self._cleanup(context)
-            self.report({"WARNING"}, f"Could not get download link. {response_json}")
             self.quit()
             return
 
-        # download to specified folder
-        file_path: PurePath = PurePath(
-            PurePath(bpy.path.abspath(prefs.download_folder))
-            / PurePath(f"{selected_job.name}.zip")
+        credentials: dict = response_json.get("credentials", {})
+        BUCKET: str = response_json.get("bucket")
+        BASEKEY: str = response_json.get("baseKey")
+        ACCESS_KEY: str = credentials.get("AccessKeyId")
+        SECRET_KEY: str = credentials.get("SecretAccessKey")
+        SESSION_TOKEN: str = credentials.get("SessionToken")
+        if (
+            not BUCKET
+            or not BASEKEY
+            or not ACCESS_KEY
+            or not SECRET_KEY
+            or not SESSION_TOKEN
+        ):
+            await progress(props, "download_job_progress", 1.0, context)
+            self.report(
+                {"ERROR"},
+                f"Couldn't get s3 credentials to initiate download.\n{BUCKET = }\n{BASEKEY = }\n{ACCESS_KEY = }\n{SECRET_KEY = }\n{SESSION_TOKEN = }",
+            )
+            self._cleanup(context)
+            self.quit()
+            return
+
+        client = boto3.client(
+            "s3",
+            aws_access_key_id=ACCESS_KEY,
+            aws_secret_access_key=SECRET_KEY,
+            aws_session_token=SESSION_TOKEN,
         )
 
-        try:
-            await self._download_file_async(
-                download_link,
-                file_path,
-                lambda d, t: self._progress_callback(
-                    d, t, progress_start, progress_end, props, context
-                ),
-            )
-        except FileNotFoundError as e:
-            props.download_job_progress_text = "100% - Not downloaded!"
-            await progress(
-                props, "download_job_progress", progress_end, context, sleep=1
-            )
+        s3_response: dict = client.list_objects_v2(Bucket=BUCKET, Prefix=BASEKEY)
+        if not isinstance(s3_response, dict):
             await progress(props, "download_job_progress", 1.0, context)
+            self.report(
+                {"ERROR"},
+                f"Error getting images to download, response was not a dictionary.",
+            )
             self._cleanup(context)
-            self.report({"WARNING"}, f"The download folder does not exist. {repr(e)}")
             self.quit()
             return
-        except Exception as e:
-            props.download_job_progress_text = "100% - Not downloaded!"
-            await progress(
-                props, "download_job_progress", progress_end, context, sleep=1
+
+        contents: list[dict[str, Any]] = s3_response.get("Contents", [])
+
+        # TODO progressbar
+
+        for content in contents:
+            key: str = content.get("Key")
+            if key is None:
+                continue
+
+            # download to specified folder
+            file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
+            file_path: PurePath = PurePath(
+                PurePath(bpy.path.abspath(prefs.download_folder)) / file_name
             )
-            await progress(props, "download_job_progress", 1.0, context)
-            self._cleanup(context)
-            self.report({"WARNING"}, f"Could not download zip-file. {repr(e)}")
-            self.quit()
-            return
-        else:
-            rendergate_logger.info(f"Downloaded file to: {file_path}")
+            client.download_file(BUCKET, key, file_path)
+
+            rendergate_logger.info(f"Downloaded image to {file_path}")
 
         props.download_job_progress_text = "100% - Downloaded"
         await progress(props, "download_job_progress", progress_end, context, sleep=1)
         await progress(props, "download_job_progress", 1.0, context)
         self._cleanup(context)
-        self.report({"INFO"}, "Zip-file downloaded.")
+
+        self.report({"INFO"}, "Images downloaded.")
         self.quit()
         return
-
-    async def _download_file_async(
-        self, url: str, file_path: str, progress_callback: Callable = None
-    ):
-        """Download a file asynchronous and non-blocking."""
-
-        async with httpx.AsyncClient() as client:
-            async with client.stream("GET", url) as response:
-                response.raise_for_status()
-                total: int = int(response.headers.get("Content-Length", 0))
-                downloaded: int = 0
-                with open(file_path, "wb") as f:
-                    async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if (
-                            isinstance(progress_callback, Callable)
-                            and progress_callback
-                            and total
-                        ):
-                            await progress_callback(downloaded, total)
-
-    async def _progress_callback(
-        self,
-        downloaded: int,
-        total: int,
-        progress_start: int,
-        progress_end: int,
-        props: RendergateProperties,
-        context: Context,
-    ):
-        """Report the progress of a download."""
-
-        progress_normalized: float = round(downloaded / total, 2)
-        progress_normalized *= progress_end - progress_start
-        progress_normalized += progress_start
-        progress_normalized = round(progress_normalized, 2)
-        percent: int = int(progress_normalized * 100)
-        mb: float = round(downloaded / (1024 * 1024), 2)
-        total_mb: float = round(total / (1024 * 1024), 2)
-
-        progress_text: str = f"{percent}% - {mb}/{total_mb} MB"
-        props.download_job_progress_text = progress_text
-
-        await progress(
-            props,
-            "download_job_progress",
-            progress_normalized,
-            context,
-        )
-
-        rendergate_logger.info(progress_text)
