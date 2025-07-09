@@ -144,14 +144,14 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
 
         # download render results
         download: UILayout = buttons.row(align=True)
-        if props.download_job_progress < 1.0:
+        if props.download_images_progress < 1.0:
             # fix for Blender display bug
             progress_sandbox: UILayout = download.row(align=True)
             progress_sandbox.separator(factor=0)
             progress_sandbox.progress(
-                factor=props.download_job_progress,
+                factor=props.download_images_progress,
                 type="BAR",
-                text=props.download_job_progress_text,
+                text=props.download_images_progress_text,
             )
         else:
             download.operator(

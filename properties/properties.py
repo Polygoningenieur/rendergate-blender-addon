@@ -86,6 +86,16 @@ class RendergateProperties(PropertyGroup):
 
     download_job_progress_text: StringProperty()
 
+    download_images_progress: FloatProperty(
+        soft_min=0.0,
+        soft_max=1.0,
+        min=0.0,
+        max=1.0,
+        default=1.0,
+    )
+
+    download_images_progress_text: StringProperty()
+
     render_job_progress: FloatProperty(
         soft_min=0.0,
         soft_max=1.0,
