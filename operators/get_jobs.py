@@ -60,7 +60,13 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
         props.getting_jobs = False
         props.async_op_running = False
-        context.area.tag_redraw()
+        try:
+            if context:
+                context.area.tag_redraw()
+            else:
+                bpy.context.area.tag_redraw()
+        except:
+            pass
 
     @catch_exception(_cleanup)
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
@@ -71,7 +77,13 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
 
         props.async_op_running = True
         props.getting_jobs = True
-        context.area.tag_redraw()
+        try:
+            if context:
+                context.area.tag_redraw()
+            else:
+                bpy.context.area.tag_redraw()
+        except:
+            pass
 
         no_jobs: bool = True if not jobs.get_jobs() else False
 
@@ -132,7 +144,13 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
 
         props.getting_jobs = False
         props.async_op_running = False
-        context.area.tag_redraw()
+        try:
+            if context:
+                context.area.tag_redraw()
+            else:
+                bpy.context.area.tag_redraw()
+        except:
+            pass
         if self is not None:
             self._cleanup(context)
             self.report({"INFO"}, "Job list updated.")

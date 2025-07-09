@@ -86,7 +86,13 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties        
         props.download_job_progress = 1.0
         props.async_op_running = False
-        context.area.tag_redraw()
+        try:
+            if context:
+                context.area.tag_redraw()
+            else:
+                bpy.context.area.tag_redraw()
+        except:
+            pass
 
     @catch_exception(_cleanup)
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):

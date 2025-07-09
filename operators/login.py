@@ -14,27 +14,57 @@
 import bpy
 import random
 import string
+import asyncio
 import traceback
+from typing import Any
 from warrant import Cognito
+from functools import partial
+from asyncio import AbstractEventLoop
 from bpy.types import Operator, Context
-from ..utils.utils import class_to_register
 from ..utils.global_vars import rendergate_logger
+from ..utils.async_loop import AsyncModalOperatorMixin
+from ..utils.utils import class_to_register, catch_exception
 from ..properties.properties import RendergateProperties, RendergatePreferences
 
 
 @class_to_register
-class RENDERGATE_OT_login(Operator):
+class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
     bl_idname = "rendergate.login"
     bl_label = "Login"
     bl_description = "Login into you Rendergate.ch account."
     bl_options = {"REGISTER", "INTERNAL"}
 
-    def execute(self, context: Context):
+    def _cleanup(self, context: Context, context_pointers: dict[str, Any] = {}) -> None:
+        """Cleanup of operator after terminating or a raised error."""
+
+        props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
+        prefs.aws_token = ""
+        props.async_op_running = False
+        props.logging_in = False
+
+        try:
+            if context:
+                context.area.tag_redraw()
+            else:
+                bpy.context.area.tag_redraw()
+        except:
+            pass
+
+    @catch_exception(_cleanup)
+    async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
         """
         Logs into AWS cognito with warrant (using boto3).
         """
 
+        loop: AbstractEventLoop = asyncio.get_event_loop()
+
+        props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
+        props.async_op_running = True
+        props.logging_in = True
 
         # aws authentication
         # TODO change to production
@@ -49,13 +79,15 @@ class RENDERGATE_OT_login(Operator):
                 user_pool_region=REGION,
                 username=prefs.username,
             )
-            user.authenticate(password=prefs.password)
+            authenticate_partial = partial(user.authenticate, password=prefs.password)
+            await loop.run_in_executor(None, authenticate_partial)
 
         except Exception as e:
             rendergate_logger.error(traceback.format_exc())
-            prefs.aws_token = ""
+            self._cleanup()
             self.report({"ERROR"}, f"Login failed: {str(e)}")
-            return {"CANCELLED"}
+            self.quit()
+            return
 
         else:
             # login sucessfull
@@ -73,11 +105,27 @@ class RENDERGATE_OT_login(Operator):
             prefs.password = random_string
             prefs.password = ""
 
-            # get jobs
-            try:
-                bpy.ops.rendergate.get_jobs("EXEC_DEFAULT")
-            except Exception as e:
-                rendergate_logger.error(f"{repr(e)}")
+            props.async_op_running = False
+            props.logging_in = False
 
-        self.report({"INFO"}, "Login successfull.")
-        return {"FINISHED"}
+            try:
+                if context:
+                    context.area.tag_redraw()
+                else:
+                    bpy.context.area.tag_redraw()
+            except:
+                pass
+
+            # NOTE bpy operators (regular or async) need to be called
+            # to run in Blenders main thread, if called from async mixin
+            # use bpy.app.timers to schedule a function to run in the main thread
+            # also the app timer expects None if the timer should stop,
+            # so we suppress the raised error
+            try:
+                bpy.app.timers.register(bpy.ops.rendergate.get_jobs)
+            except Exception:
+                pass
+
+            self.report({"INFO"}, "Login successfull.")
+            self.quit()
+            return

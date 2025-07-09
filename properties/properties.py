@@ -37,6 +37,13 @@ class RendergateProperties(PropertyGroup):
         options={"HIDDEN"},
     )
 
+    logging_in: BoolProperty(
+        name="Logging In",
+        description="If the addon currently logs the user into Rendergate",
+        default=False,
+        options={"HIDDEN"},
+    )
+
     # TODO change to production
     rendergate_api_url: StringProperty(
         name="Rendergate API URL",

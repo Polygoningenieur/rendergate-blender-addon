@@ -42,7 +42,13 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
         props.render_job_progress = 1.0
         props.async_op_running = False
-        context.area.tag_redraw()
+        try:
+            if context:
+                context.area.tag_redraw()
+            else:
+                bpy.context.area.tag_redraw()
+        except:
+            pass
 
     @catch_exception(_cleanup)
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
@@ -50,7 +56,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
 
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-        
+
         props.async_op_running = True
 
         props.render_job_progress_text = "10% - Sending..."

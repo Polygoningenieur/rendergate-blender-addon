@@ -15,7 +15,7 @@
 import bpy
 from bpy.types import Panel, Context, UILayout
 from ..utils.utils import class_to_register
-from ..properties.properties import RendergatePreferences
+from ..properties.properties import RendergatePreferences, RendergateProperties
 from ..operators.login import RENDERGATE_OT_login
 from ..operators.open_prefs import RENDERGATE_OT_open_prefs
 
@@ -61,6 +61,7 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
     def draw(self, context: Context):
         """Show UI for rendergate login, create new project, render and download."""
 
+        props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         layout: UILayout = self.layout
@@ -81,5 +82,12 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
             layout.prop(data=prefs, property="username")
             layout.prop(data=prefs, property="password")
 
-            layout.operator(operator=RENDERGATE_OT_login.bl_idname)
+            login_operator: UILayout = layout.row(align=True)
+            if props.logging_in:
+                login_operator.enabled = False
+                login_operator.operator(
+                    operator=RENDERGATE_OT_login.bl_idname, text="Logging in..."
+                )
+            else:
+                login_operator.operator(operator=RENDERGATE_OT_login.bl_idname)
             return
