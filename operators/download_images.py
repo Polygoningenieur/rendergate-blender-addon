@@ -50,7 +50,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
 
         if (
             not props.async_op_running
@@ -66,7 +66,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
     def description(cls, context: Context, properties):
         """Change operator description."""
 
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
@@ -104,8 +104,6 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
 
         # TODO check for downloadable images frequently, not only on button click (app timer handler)
 
-        loop: AbstractEventLoop = asyncio.get_event_loop()
-
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
@@ -121,44 +119,10 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         props.download_images_progress_text = "10% - Downloading..."
         await progress(props, "download_images_progress", progress_start, context)
 
-        selected_job: Job = jobs.get_selected_render_job(context)
-
-        headers: dict = {"auth": prefs.aws_token}
-
-        # download render job
-        response: Response | str = await rest_client.request(
-            url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/downloadPerm",
-            headers=headers,
-            request="GET",
+        # get download credentials
+        BUCKET, BASEKEY, ACCESS_KEY, SECRET_KEY, SESSION_TOKEN = (
+            await self.get_download_credentials(context)
         )
-
-        # error occured
-        if isinstance(response, str):
-            await progress(props, "download_images_progress", 1.0, context)
-            if response.startswith("Token expired"):
-                prefs.aws_token = ""
-                self.report({"INFO"}, response)
-            else:
-                self.report({"ERROR"}, response)
-            self._cleanup(context)
-            self.quit()
-            return
-
-        try:
-            response_json: dict = response.json()
-        except JSONDecodeError as e:
-            await progress(props, "download_images_progress", 1.0, context)
-            self.report({"ERROR"}, f"Couldn't decode boto3 s3 response: {e}")
-            self._cleanup(context)
-            self.quit()
-            return
-
-        credentials: dict = response_json.get("credentials", {})
-        BUCKET: str = response_json.get("bucket")
-        BASEKEY: str = response_json.get("baseKey")
-        ACCESS_KEY: str = credentials.get("AccessKeyId")
-        SECRET_KEY: str = credentials.get("SecretAccessKey")
-        SESSION_TOKEN: str = credentials.get("SessionToken")
         if (
             not BUCKET
             or not BASEKEY
@@ -187,11 +151,10 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         )
 
         # get list of downloadable images
-        list_objects_partial = partial(
-            client.list_objects_v2, Bucket=BUCKET, Prefix=BASEKEY
+        contents: list[dict[str, Any]] | None = await self.get_download_content(
+            client, BUCKET, BASEKEY
         )
-        s3_response: dict = await loop.run_in_executor(None, list_objects_partial)
-        if not isinstance(s3_response, dict):
+        if contents is None:
             await progress(props, "download_images_progress", 1.0, context)
             self.report(
                 {"ERROR"},
@@ -200,18 +163,15 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
             self._cleanup(context)
             self.quit()
             return
-
-        props.download_images_progress_text = "20% - Downloading..."
-        await progress(props, "download_images_progress", 0.2, context)
-
-        # list of downloadable images is in Contents
-        contents: list[dict[str, Any]] = s3_response.get("Contents", [])
         if len(contents) == 0:
             await progress(props, "download_images_progress", 1.0, context)
             self.report({"INFO"}, f"Nothing to download")
             self._cleanup(context)
             self.quit()
             return
+
+        props.download_images_progress_text = "20% - Downloading..."
+        await progress(props, "download_images_progress", 0.2, context)
 
         # download images
         current_progress: float = 0.2
@@ -225,10 +185,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
             file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
             file_path: PurePath = PurePath(download_folder / file_name)
 
-            download_file_partial = partial(
-                client.download_file, BUCKET, key, file_path
-            )
-            await loop.run_in_executor(None, download_file_partial)
+            await self.download_image(client, BUCKET, key, file_path)
 
             current_progress += progress_steps
             download_percentage: int = round(current_progress * 100)
@@ -253,3 +210,70 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         self.report({"INFO"}, "Images downloaded.")
         self.quit()
         return
+
+    @staticmethod
+    async def get_download_credentials(
+        context: Context,
+    ) -> tuple[str, str, str, str, str]:
+        """Get the download credentials from AWS."""
+
+        props: RendergateProperties = context.scene.rendergate_properties
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
+        selected_job: Job = jobs.get_selected_job(context)
+
+        # download render job
+        response: Response | str = await rest_client.request(
+            url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/downloadPerm",
+            headers={"auth": prefs.aws_token},
+            request="GET",
+        )
+
+        # error occured
+        if isinstance(response, str):
+            rendergate_logger.error(
+                f"Getting download credentials returned an error: {response}"
+            )
+            return None, None, None, None, None
+
+        try:
+            response_json: dict = response.json()
+        except JSONDecodeError as e:
+            rendergate_logger.error(f"Couldn't decode boto3 s3 response: {e}")
+            return None, None, None, None, None
+
+        credentials: dict = response_json.get("credentials", {})
+        BUCKET: str = response_json.get("bucket")
+        BASEKEY: str = response_json.get("baseKey")
+        ACCESS_KEY: str = credentials.get("AccessKeyId")
+        SECRET_KEY: str = credentials.get("SecretAccessKey")
+        SESSION_TOKEN: str = credentials.get("SessionToken")
+
+        return BUCKET, BASEKEY, ACCESS_KEY, SECRET_KEY, SESSION_TOKEN
+
+    @staticmethod
+    async def get_download_content(client, bucket: str, base_key: str):
+        """
+        Get the Contents list of the download, containing the files that can be downloaded.
+        """
+
+        loop: AbstractEventLoop = asyncio.get_event_loop()
+
+        list_objects_partial = partial(
+            client.list_objects_v2, Bucket=bucket, Prefix=base_key
+        )
+        s3_response: dict = await loop.run_in_executor(None, list_objects_partial)
+        if not isinstance(s3_response, dict):
+            return None
+
+        # list of downloadable images is in Contents
+        return s3_response.get("Contents", [])
+
+    @staticmethod
+    async def download_image(client, bucket: str, key: str, file_path: PurePath):
+        """Downloads a file to the specified file_path."""
+
+        loop: AbstractEventLoop = asyncio.get_event_loop()
+
+        download_file_partial = partial(client.download_file, bucket, key, file_path)
+        await loop.run_in_executor(None, download_file_partial)

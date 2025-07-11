@@ -178,6 +178,7 @@ class RendergatePreferences(AddonPreferences):
         name="Render Jobs",
         description="All your rendergate.ch render jobs",
         items=RendergatePropertyUpdates.create_job_list,
+        update=RendergatePropertyUpdates.check_for_downloads,
         default=0,
     )
 
@@ -185,5 +186,6 @@ class RendergatePreferences(AddonPreferences):
         name="Download Folder",
         description="The folder where rendered results from Rendergate.ch will be stored in",
         subtype="DIR_PATH",
+        update=RendergatePropertyUpdates.check_for_downloads,
         default="",
     )

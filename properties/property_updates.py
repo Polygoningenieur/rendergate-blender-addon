@@ -12,7 +12,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
+import bpy
 from bpy.types import Context
+from functools import partial
 from ..utils.models import Job
 from ..data import jobs
 
@@ -49,8 +51,32 @@ class RendergatePropertyUpdates:
                     (
                         "0",
                         "Please Refresh ->",
-                        "Please refresh the jobs with the button on the right of this list",0
+                        "Please refresh the jobs with the button on the right of this list",
+                        0,
                     )
                 ]
 
         return enums
+
+    def check_for_downloads(self, context: Context) -> None:
+        """
+        Start a timer that frequently checks if we can download images and downloads them.
+        """
+
+        try:
+            bpy.app.timers.unregister(bpy.__rendergate_download)
+        except Exception:
+            pass
+
+        selected_job: Job = jobs.get_selected_job(context)
+
+        # use a partial to have a reference of the function, using lambda doesn't work
+        download_images_partial: partial = partial(
+            jobs.download_images_timer,
+            context=context,
+            job=selected_job,
+        )
+        # add timer that constantly checks for downloadable images
+        bpy.app.timers.register(download_images_partial)
+        # keep reference so we can unregister anytime anywhere
+        bpy.__rendergate_download = download_images_partial

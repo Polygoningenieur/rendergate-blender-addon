@@ -34,6 +34,7 @@ class Job:
     time: float
     time_human: str
     preview_link: str
+    images: list
 
     def __eq__(self, other):
         return self.identifier == other

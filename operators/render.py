@@ -62,7 +62,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         props.render_job_progress_text = "10% - Sending..."
         await progress(props, "render_job_progress", 0.1, context)
 
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
 
         headers: dict = {"auth": prefs.aws_token}
         payload: dict = {
@@ -115,7 +115,7 @@ class RENDERGATE_OT_invoke_render(Operator):
 
         props: RendergateProperties = context.scene.rendergate_properties
 
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
 
         if props.async_op_running:
             return False
@@ -143,7 +143,7 @@ class RENDERGATE_OT_invoke_render(Operator):
         """This extra operator is necessary to trigger the async operator."""
 
         props: RendergateProperties = context.scene.rendergate_properties
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
         if selected_job is None:
             return
 
@@ -162,7 +162,7 @@ class RENDERGATE_OT_invoke_render(Operator):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
         if selected_job is None:
             return
 

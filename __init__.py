@@ -16,9 +16,9 @@ from bpy.utils import register_class, unregister_class
 from bpy.types import Scene
 from bpy.props import PointerProperty
 
-
 # necessary to import modules so they can get registered
 from . import properties, utils, panels, operators
+
 from .utils.utils import classes_to_register
 from .properties.properties import RendergateProperties
 from .utils.async_loop import setup_asyncio_executor
@@ -28,7 +28,7 @@ bl_info = {
     "author": "Polygoningenieur Gustav Hahn",
     "description": "Allows you to render in the cloud with Rendergate.ch",
     "blender": (4, 4, 0),
-    "version": (0, 1, 12),
+    "version": (0, 1, 13),
     "location": "Properties -> Render",
     "warning": "",
     "doc_url": "https://github.com/Polygoningenieur/rendergate-blender-addon",

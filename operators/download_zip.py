@@ -46,7 +46,7 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
         
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
 
         if (
             not props.async_op_running
@@ -62,7 +62,7 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
     def description(cls, context: Context, properties):
         """Change operator description."""
 
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
@@ -109,7 +109,7 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
         props.download_job_progress_text = "10% - Downloading..."
         await progress(props, "download_job_progress", progress_start, context)
 
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
 
         headers: dict = {"auth": prefs.aws_token}
 

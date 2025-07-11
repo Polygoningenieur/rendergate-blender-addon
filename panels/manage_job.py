@@ -78,7 +78,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
         )
 
         # show job details of selected job
-        selected_job: Job = jobs.get_selected_render_job(context)
+        selected_job: Job = jobs.get_selected_job(context)
         if selected_job:
             job_details: UILayout = container.box()
             # TODO display preview image

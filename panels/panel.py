@@ -85,9 +85,8 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
             login_operator: UILayout = layout.row(align=True)
             if props.logging_in:
                 login_operator.enabled = False
-                login_operator.operator(
-                    operator=RENDERGATE_OT_login.bl_idname, text="Logging in..."
-                )
+                login_operator.alignment = "CENTER"
+                login_operator.label(text="Logging in...")
             else:
                 login_operator.operator(operator=RENDERGATE_OT_login.bl_idname)
             return
