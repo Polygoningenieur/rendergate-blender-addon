@@ -11,6 +11,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+
+import os
 import bpy
 import random
 import string
@@ -19,6 +21,7 @@ import traceback
 from typing import Any
 from warrant import Cognito
 from functools import partial
+from pathlib import Path, PurePath
 from asyncio import AbstractEventLoop
 from bpy.types import Operator, Context
 from ..utils.global_vars import rendergate_logger
@@ -89,43 +92,53 @@ class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
             self.quit()
             return
 
-        else:
-            # login sucessfull
-            prefs.aws_token = user.id_token
+        # login sucessfull
+        prefs.aws_token = user.id_token
 
-            # from Blender ID Authentication Addon:
-            # Prevent saving the password in user preferences
-            # Overwrite the password with a random string,
-            # as just setting to '' might only replace the first byte with 0
-            password_length: int = len(prefs.password)
-            random_string: str = "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(password_length + 16)
-            )
-            prefs.password = random_string
-            prefs.password = ""
+        # from Blender ID Authentication Addon:
+        # Prevent saving the password in user preferences
+        # Overwrite the password with a random string,
+        # as just setting to '' might only replace the first byte with 0
+        password_length: int = len(prefs.password)
+        random_string: str = "".join(
+            random.choice(string.ascii_uppercase + string.digits)
+            for _ in range(password_length + 16)
+        )
+        prefs.password = random_string
+        prefs.password = ""
 
-            props.async_op_running = False
-            props.logging_in = False
+        # set initial download folder
+        if prefs.download_folder == "":
 
-            try:
-                if context:
-                    context.area.tag_redraw()
-                else:
-                    bpy.context.area.tag_redraw()
-            except:
-                pass
+            if bpy.data.is_saved:
+                file_dir: PurePath = PurePath(os.path.dirname(bpy.data.filepath))
+                prefs.download_folder = str(file_dir / PurePath("rendergate"))
+            else:
+                downloads_folder: Path = Path(Path.home()) / PurePath("rendergate")
+                downloads_folder.mkdir(exist_ok=True)
+                prefs.download_folder = str(downloads_folder)
 
-            # NOTE bpy operators (regular or async) need to be called
-            # to run in Blenders main thread, if called from async mixin
-            # use bpy.app.timers to schedule a function to run in the main thread
-            # also the app timer expects None if the timer should stop,
-            # so we suppress the raised error
-            try:
-                bpy.app.timers.register(bpy.ops.rendergate.get_jobs)
-            except Exception:
-                pass
+        props.async_op_running = False
+        props.logging_in = False
 
-            self.report({"INFO"}, "Login successfull.")
-            self.quit()
-            return
+        try:
+            if context:
+                context.area.tag_redraw()
+            else:
+                bpy.context.area.tag_redraw()
+        except:
+            pass
+
+        # NOTE bpy operators (regular or async) need to be called
+        # to run in Blenders main thread, if called from async mixin
+        # use bpy.app.timers to schedule a function to run in the main thread
+        # also the app timer expects None if the timer should stop,
+        # so we suppress the raised error
+        try:
+            bpy.app.timers.register(bpy.ops.rendergate.get_jobs)
+        except Exception as e:
+            rendergate_logger.info(f"Error getting jobs: {e}")
+
+        self.report({"INFO"}, "Login successfull.")
+        self.quit()
+        return
