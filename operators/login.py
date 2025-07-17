@@ -133,9 +133,16 @@ class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
         # to run in Blenders main thread, if called from async mixin
         # use bpy.app.timers to schedule a function to run in the main thread
         # also the app timer expects None if the timer should stop,
-        # so we suppress the raised error
+        # so we wrap get_jobs in another function
+        def get_jobs_timer_wrapper():
+            """Wraps get_jobs to return None, which an bpy app timer expects."""
+
+            bpy.ops.rendergate.get_jobs("EXEC_DEFAULT")
+
+            return None
+
         try:
-            bpy.app.timers.register(bpy.ops.rendergate.get_jobs)
+            bpy.app.timers.register(get_jobs_timer_wrapper)
         except Exception as e:
             rendergate_logger.info(f"Error getting jobs: {e}")
 

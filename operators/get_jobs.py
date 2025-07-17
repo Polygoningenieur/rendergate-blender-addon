@@ -15,6 +15,7 @@
 # pyright: reportInvalidTypeForm=false
 
 
+import bpy
 from typing import Any
 from bpy.types import Operator, Context
 from requests import Response  # requests is included in Blender 4.4
@@ -72,7 +73,17 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
         """Upload this blend-file and create a new render job."""
 
-        props: RendergateProperties = context.scene.rendergate_properties
+        try:
+            props: RendergateProperties = context.scene.rendergate_properties
+        except AttributeError:
+            props: RendergateProperties = bpy.context.scene.rendergate_properties
+        except Exception as e:
+            rendergate_logger.error(f"Error when trying to get properties: {e}")
+            if self is not None:
+                self.report({"ERROR"}, f"{e}")
+                self.quit()
+            return
+
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         props.async_op_running = True
