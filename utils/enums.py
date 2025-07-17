@@ -25,3 +25,11 @@ class Stage(StrEnum):
     FINISHED = "FINISHED"
     CRASHED = "CRASHED"
     UNKNOWN = "UNKNOWN"
+
+
+class ImageState(StrEnum):
+    """The state an image can be in."""
+
+    MISSING = "MISSING"
+    DOWNLOADING = "DOWNLOADING"
+    DOWNLOADED = "DOWNLOADED"

@@ -25,8 +25,8 @@ from datetime import datetime, tzinfo, timedelta
 from typing import Any
 from pathlib import PurePath
 from bpy.types import Context
-from ..utils.models import Job
-from ..utils.enums import Stage
+from ..utils.models import Job, Image
+from ..utils.enums import Stage, ImageState
 from ..utils.global_vars import rendergate_logger
 
 _jobs: list[Job] = []
@@ -187,16 +187,16 @@ def download_images_timer(context: Context, job: Job) -> None | float:
     if not prefs.download_folder:
         return None
 
-    task: Task = loop.create_task(download_wrapper(context))
+    task: Task = loop.create_task(download_images(context, job))
 
-    bpy.app.timers.register(lambda: run_download_task_timer(task))
+    bpy.app.timers.register(lambda: check_download_task(task))
 
     print(f"download check for {job.display_name}.")
 
     return 2.0
 
 
-async def download_wrapper(context: Context):
+async def download_images(context: Context, job: Job):
     """Download missing images.
 
     # TODO don't download images that are currently being downloaded again
@@ -253,15 +253,36 @@ async def download_wrapper(context: Context):
         file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
         file_path: PurePath = PurePath(download_folder / file_name)
 
+        # get the current image from the job
+        image: Image = next((i for i in job.images if i.file_path == file_path), None)
+        if image is None:
+            image = Image(
+                file_path=file_path,
+                file_name=file_name,
+                file_dir=download_folder,
+                state=ImageState.MISSING,
+            )
+            job.images.append(image)
+
         # check if image is not in folder yet
         if os.path.isfile(file_path):
+            image.state = ImageState.DOWNLOADED
             rendergate_logger.info(f"File {file_name} exists.")
-        else:
-            await download.download_image(client, BUCKET, key, file_path)
-            rendergate_logger.info(f"Downloaded image {file_name}.")
+            continue
+
+        # check if image is not being downloaded currently
+        elif image.state == ImageState.DOWNLOADING:
+            rendergate_logger.info(f"File {file_name} is already being downloaded.")
+            continue
+
+        # download image
+        image.state = ImageState.DOWNLOADING
+        await download.download_image(client, BUCKET, key, file_path)
+        image.state = ImageState.DOWNLOADED
+        rendergate_logger.info(f"Downloaded image {file_name}.")
 
 
-def run_download_task_timer(task: Task):
+def check_download_task(task: Task):
     """Runs the task as a timer on the blender main thread."""
 
     # Let the event loop process pending tasks

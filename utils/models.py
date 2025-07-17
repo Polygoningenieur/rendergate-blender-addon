@@ -13,7 +13,19 @@
 
 from dataclasses import dataclass
 from decimal import Decimal
-from .enums import Stage
+from pathlib import PurePath
+from .enums import Stage, ImageState
+
+
+@dataclass
+class Image:
+    file_path: PurePath
+    file_name: str
+    file_dir: PurePath
+    state: ImageState
+
+    def __eq__(self, other: str):
+        return self.file_path == other
 
 
 @dataclass
@@ -34,7 +46,7 @@ class Job:
     time: float
     time_human: str
     preview_link: str
-    images: list
+    images: list[Image]
 
-    def __eq__(self, other):
+    def __eq__(self, other: str):
         return self.identifier == other
