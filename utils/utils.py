@@ -65,6 +65,20 @@ def catch_exception(callback: Callable):
     return decorator
 
 
+def update_ui():
+    """
+    Updates the Blender UI, sometimes it is necessary to update all areas,
+    since the context can be somewhere else when wanting to update.
+    """
+
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            try:
+                area.tag_redraw()
+            except:
+                pass
+
+
 def get_file_size(file_path: str) -> int:
     """Get the size of a file in bytes"""
 

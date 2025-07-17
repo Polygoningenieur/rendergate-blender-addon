@@ -25,6 +25,7 @@ from datetime import datetime, tzinfo, timedelta
 from typing import Any
 from pathlib import PurePath
 from bpy.types import Context
+from ..utils import utils
 from ..utils.models import Job, Image
 from ..utils.enums import Stage, ImageState
 from ..utils.global_vars import rendergate_logger
@@ -193,13 +194,14 @@ def download_images_timer(context: Context, job: Job) -> None | float:
 
     print(f"download check for {job.display_name}.")
 
+    utils.update_ui()
+
     return 2.0
 
 
 async def download_images(context: Context, job: Job):
     """Download missing images.
 
-    # TODO don't download images that are currently being downloaded again
     # TODO optimize: get download credentials only once (are valid for 1 hour)
     # TODO then use the same client
     """
@@ -274,6 +276,10 @@ async def download_images(context: Context, job: Job):
         elif image.state == ImageState.DOWNLOADING:
             rendergate_logger.info(f"File {file_name} is already being downloaded.")
             continue
+
+        # image is neither present nor is it being downloaded at the moment
+        else:
+            image.state = ImageState.MISSING
 
         # download image
         image.state = ImageState.DOWNLOADING

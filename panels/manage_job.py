@@ -18,6 +18,7 @@ from bpy.types import Panel, Context, UILayout
 from .panel import RendergatePanel
 from ..utils.utils import class_to_register
 from ..utils.models import Job
+from ..utils.enums import ImageState, ProgressBarDots
 from ..data import jobs
 from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
@@ -109,6 +110,18 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             )
             job_details.label(
                 text=f"Progress: {selected_job.progress}", icon="SORTSIZE"
+            )
+            images_progress: str = ""
+            for image in selected_job.images:
+                if image.state == ImageState.DOWNLOADED:
+                    symbol: str = ProgressBarDots.FULL
+                elif image.state == ImageState.DOWNLOADING:
+                    symbol: str = ProgressBarDots.HALF
+                else:
+                    symbol: str = ProgressBarDots.EMPTY
+                images_progress += symbol
+            job_details.label(
+                text=f"Images: {images_progress}", icon="NODE_COMPOSITING"
             )
 
         buttons: UILayout = layout.split()

@@ -33,3 +33,11 @@ class ImageState(StrEnum):
     MISSING = "MISSING"
     DOWNLOADING = "DOWNLOADING"
     DOWNLOADED = "DOWNLOADED"
+
+
+class ProgressBarDots(StrEnum):
+    """Symbols for a progress bar."""
+
+    FULL = "⣿"
+    HALF = "⣤"
+    EMPTY = "⣀"
