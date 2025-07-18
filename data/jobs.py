@@ -277,15 +277,26 @@ async def download_images(context: Context, job: Job):
             rendergate_logger.info(f"File {file_name} is already being downloaded.")
             continue
 
+        # the directory was not found when trying to download the image
+        # when the user changes the download folder, new images will be created
+        # and their state starts with MISSING again
+        elif image.state == ImageState.DIRNOTFOUND:
+            continue
+
         # image is neither present nor is it being downloaded at the moment
         else:
             image.state = ImageState.MISSING
 
         # download image
         image.state = ImageState.DOWNLOADING
-        await download.download_image(client, BUCKET, key, file_path)
-        image.state = ImageState.DOWNLOADED
-        rendergate_logger.info(f"Downloaded image {file_name}.")
+        try:
+            await download.download_image(client, BUCKET, key, file_path)
+        except FileNotFoundError as e:
+            image.state = ImageState.DIRNOTFOUND
+            rendergate_logger.info(f"Image {file_name} could not be downlaoded: {e}")
+        else:
+            image.state = ImageState.DOWNLOADED
+            rendergate_logger.info(f"Downloaded image {file_name}.")
 
 
 def check_download_task(task: Task):

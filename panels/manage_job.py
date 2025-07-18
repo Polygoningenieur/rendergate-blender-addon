@@ -14,6 +14,7 @@
 
 import bpy
 from decimal import Decimal
+from pathlib import PurePath
 from bpy.types import Panel, Context, UILayout
 from .panel import RendergatePanel
 from ..utils.utils import class_to_register
@@ -113,10 +114,14 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             )
             images_progress: str = ""
             for image in selected_job.images:
+                if PurePath(image.file_dir) != PurePath(prefs.download_folder):
+                    continue
                 if image.state == ImageState.DOWNLOADED:
                     symbol: str = ProgressBarDots.FULL
                 elif image.state == ImageState.DOWNLOADING:
                     symbol: str = ProgressBarDots.HALF
+                elif image.state == ImageState.DIRNOTFOUND:
+                    symbol: str = ProgressBarDots.ERROR
                 else:
                     symbol: str = ProgressBarDots.EMPTY
                 images_progress += symbol

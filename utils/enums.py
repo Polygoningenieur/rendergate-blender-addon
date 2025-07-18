@@ -30,6 +30,7 @@ class Stage(StrEnum):
 class ImageState(StrEnum):
     """The state an image can be in."""
 
+    DIRNOTFOUND = "DIRNOTFOUND"
     MISSING = "MISSING"
     DOWNLOADING = "DOWNLOADING"
     DOWNLOADED = "DOWNLOADED"
@@ -41,3 +42,4 @@ class ProgressBarDots(StrEnum):
     FULL = "⣿"
     HALF = "⣤"
     EMPTY = "⣀"
+    ERROR = "⡀"

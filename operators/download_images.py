@@ -185,7 +185,10 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
             file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
             file_path: PurePath = PurePath(download_folder / file_name)
 
-            await self.download_image(client, BUCKET, key, file_path)
+            try:
+                await self.download_image(client, BUCKET, key, file_path)
+            except FileNotFoundError:
+                continue
 
             current_progress += progress_steps
             download_percentage: int = round(current_progress * 100)
@@ -276,4 +279,8 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         loop: AbstractEventLoop = asyncio.get_event_loop()
 
         download_file_partial = partial(client.download_file, bucket, key, file_path)
-        await loop.run_in_executor(None, download_file_partial)
+        try:
+            await loop.run_in_executor(None, download_file_partial)
+        except FileNotFoundError as e:
+            rendergate_logger.error(e)
+            raise FileNotFoundError(e)

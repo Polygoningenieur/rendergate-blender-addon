@@ -70,6 +70,11 @@ class RendergatePropertyUpdates:
 
         selected_job: Job = jobs.get_selected_job(context)
 
+        # there was an update made (downloads folder changed for example),
+        # so we want to stop all timers and tasks that are running with old data
+        if hasattr(selected_job, "images"):
+            selected_job.images.clear()
+
         # use a partial to have a reference of the function, using lambda doesn't work
         download_images_partial: partial = partial(
             jobs.download_images_timer,
