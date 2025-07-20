@@ -188,11 +188,14 @@ def download_images_timer(context: Context, job: Job) -> None | float:
     if not prefs.download_folder:
         return None
 
+    if not prefs.auto_download:
+        return None
+
     task: Task = loop.create_task(download_images(context, job))
 
-    bpy.app.timers.register(lambda: check_download_task(task))
+    bpy.app.timers.register(lambda: check_download_task(context, task))
 
-    print(f"download check for {job.display_name}.")
+    rendergate_logger.debug(f"Download check for {job.display_name}.")
 
     utils.update_ui()
 
@@ -269,12 +272,10 @@ async def download_images(context: Context, job: Job):
         # check if image is not in folder yet
         if os.path.isfile(file_path):
             image.state = ImageState.DOWNLOADED
-            rendergate_logger.info(f"File {file_name} exists.")
             continue
 
         # check if image is not being downloaded currently
         elif image.state == ImageState.DOWNLOADING:
-            rendergate_logger.info(f"File {file_name} is already being downloaded.")
             continue
 
         # the directory was not found when trying to download the image
@@ -299,15 +300,22 @@ async def download_images(context: Context, job: Job):
             rendergate_logger.info(f"Downloaded image {file_name}.")
 
 
-def check_download_task(task: Task):
+def check_download_task(context: Context, task: Task):
     """Runs the task as a timer on the blender main thread."""
 
-    # Let the event loop process pending tasks
+    from ..properties.properties import RendergatePreferences
+
+    # let the event loop process pending tasks
     loop: AbstractEventLoop = asyncio.get_event_loop()
     loop.call_soon(loop.stop)
     loop.run_forever()
 
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
     if task.done():
+        return None
+    elif not prefs.auto_download:
+        task.cancel()
         return None
     else:
         return 0.1

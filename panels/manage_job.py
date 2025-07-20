@@ -160,23 +160,6 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                 icon="RENDER_STILL",
             )
 
-        # download render results
-        download: UILayout = buttons.row(align=True)
-        if props.download_images_progress < 1.0:
-            # fix for Blender display bug
-            progress_sandbox: UILayout = download.row(align=True)
-            progress_sandbox.separator(factor=0)
-            progress_sandbox.progress(
-                factor=props.download_images_progress,
-                type="BAR",
-                text=props.download_images_progress_text,
-            )
-        else:
-            download.operator(
-                operator=RENDERGATE_OT_download_images.bl_idname,
-                icon="RENDER_RESULT",
-            )
-
         download_folder_row: UILayout = layout.row(align=True)
         download_folder_row.prop(
             data=prefs,
@@ -189,3 +172,24 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             text="",
             icon="FOLDER_REDIRECT",
         )
+
+        auto_download: UILayout = layout.row(align=True)
+        auto_download.prop(data=prefs, property="auto_download")
+
+        if not prefs.auto_download or props.download_images_progress < 1.0:
+            # download render results
+            download: UILayout = auto_download.row(align=True)
+            if props.download_images_progress < 1.0:
+                # fix for Blender display bug
+                progress_sandbox: UILayout = download.row(align=True)
+                progress_sandbox.separator(factor=0)
+                progress_sandbox.progress(
+                    factor=props.download_images_progress,
+                    type="BAR",
+                    text=props.download_images_progress_text,
+                )
+            else:
+                download.operator(
+                    operator=RENDERGATE_OT_download_images.bl_idname,
+                    icon="RENDER_RESULT",
+                )

@@ -189,3 +189,10 @@ class RendergatePreferences(AddonPreferences):
         update=RendergatePropertyUpdates.check_for_downloads,
         default="",
     )
+
+    auto_download: BoolProperty(
+        name="Auto-Download Rendered Images",
+        description="Automatically downloads the rendered images of the selected job into the specified download folder",
+        update=RendergatePropertyUpdates.check_for_downloads,
+        default=True,
+    )
