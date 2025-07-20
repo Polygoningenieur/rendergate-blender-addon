@@ -32,3 +32,6 @@ rendergate_logger: Logger = logging.getLogger(__name__)
 if not len(rendergate_logger.handlers):
     rendergate_logger.addHandler(_get_rendergate_handler())
 rendergate_logger.setLevel(logging.INFO)
+
+# the bpy.utils.previews collection used to display custom images in the UI
+rendergate_images: dict = {}

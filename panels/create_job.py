@@ -25,16 +25,9 @@ class RENDERGATE_PT_create_job(RendergatePanel, Panel):
     """Shows all jobs of the user in a list."""
 
     bl_idname = "RENDERGATE_PT_create_job"
-    bl_label = "       Create Render Job"
+    bl_label = "Create Render Job"
     bl_parent_id = "RENDERGATE_PT_rendergate"
     bl_order = 0
-    bl_options = {"HEADER_LAYOUT_EXPAND"}
-
-    def draw_header(self, context: Context):
-        """Draw an icon in the header"""
-
-        layout: UILayout = self.layout
-        layout.label(text="", icon="EVENT_NDOF_BUTTON_PLUS")
 
     @classmethod
     def poll(cls, context: Context):

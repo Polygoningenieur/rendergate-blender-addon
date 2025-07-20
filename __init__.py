@@ -12,7 +12,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-from bpy.utils import register_class, unregister_class
+import os
+from bpy.utils import register_class, unregister_class, previews
 from bpy.types import Scene
 from bpy.props import PointerProperty
 
@@ -22,13 +23,14 @@ from . import properties, utils, panels, operators
 from .utils.utils import classes_to_register
 from .properties.properties import RendergateProperties
 from .utils.async_loop import setup_asyncio_executor
+from .utils.global_vars import rendergate_images
 
 bl_info = {
     "name": "Rendergate",
     "author": "Polygoningenieur Gustav Hahn",
     "description": "Allows you to render in the cloud with Rendergate.ch",
     "blender": (4, 4, 0),
-    "version": (0, 1, 19),
+    "version": (0, 1, 20),
     "location": "Properties -> Render",
     "warning": "",
     "doc_url": "https://github.com/Polygoningenieur/rendergate-blender-addon",
@@ -48,6 +50,20 @@ def register() -> None:
 
     Scene.rendergate_properties = PointerProperty(type=RendergateProperties)
 
+    # Note that preview collections returned by bpy.utils.previews
+    # are regular py objects - you can use them to store custom data.
+    pcoll: previews.ImagePreviewCollection = previews.new()
+    # path to the folder where the icon is
+    # the path is calculated relative to this py file inside the addon folder
+    rendergate_icons_dir: str = os.path.join(os.path.dirname(__file__), "icons")
+    # load a preview thumbnail of a file and store in the previews collection
+    pcoll.load(
+        "rendergate_logo",
+        os.path.join(rendergate_icons_dir, "rendergate.png"),
+        "IMAGE",
+    )
+    rendergate_images["main"] = pcoll
+
 
 def unregister() -> None:
     """Unregister addon classes."""
@@ -56,3 +72,7 @@ def unregister() -> None:
     for c in reversed(classes_to_register):
         if c.is_registered:
             unregister_class(c)
+
+    for pcoll in rendergate_images.values():
+        previews.remove(pcoll)
+    rendergate_images.clear()

@@ -15,6 +15,7 @@
 import bpy
 from bpy.types import Panel, Context, UILayout
 from ..utils.utils import class_to_register
+from ..utils.global_vars import rendergate_images
 from ..properties.properties import RendergatePreferences, RendergateProperties
 from ..operators.login import RENDERGATE_OT_login
 from ..operators.open_prefs import RENDERGATE_OT_open_prefs
@@ -35,7 +36,7 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
     """
 
     bl_idname = "RENDERGATE_PT_rendergate"
-    bl_label = "Rendergate"
+    bl_label = "       Rendergate"
     bl_options = {"HEADER_LAYOUT_EXPAND"}
 
     def draw_header(self, context: Context):
@@ -43,13 +44,16 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
 
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
+        layout: UILayout = self.layout
+        split = layout.split(factor=1 / 5)
+        left = split.row()
+        left.alignment = "LEFT"
+        try:
+            left.label(icon_value=rendergate_images["main"]["rendergate_logo"].icon_id)
+        except (KeyError, AttributeError):
+            left.label(icon="RENDERLAYERS")
+
         if prefs.aws_token:
-
-            layout: UILayout = self.layout
-            split = layout.split(factor=1 / 5)
-            left = split.row()
-            left.alignment = "LEFT"
-
             right = split.row()
             right.alignment = "RIGHT"
             right.label(

@@ -37,16 +37,9 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
     """
 
     bl_idname = "RENDERGATE_PT_manage_job"
-    bl_label = "       Manage Render Job"
+    bl_label = "Manage Render Job"
     bl_parent_id = "RENDERGATE_PT_rendergate"
     bl_order = 1
-    bl_options = {"HEADER_LAYOUT_EXPAND"}
-
-    def draw_header(self, context: Context):
-        """Draw an icon in the header"""
-
-        layout: UILayout = self.layout
-        layout.label(text="", icon="RENDER_ANIMATION")
 
     @classmethod
     def poll(cls, context: Context):
