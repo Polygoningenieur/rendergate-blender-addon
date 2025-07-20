@@ -18,7 +18,7 @@ from pathlib import PurePath
 from bpy.types import Panel, Context, UILayout
 from .panel import RendergatePanel
 from ..utils.utils import class_to_register
-from ..utils.models import Job
+from ..utils.models import Job, Image
 from ..utils.enums import ImageState, ProgressBarDots
 from ..data import jobs
 from ..properties.properties import RendergateProperties, RendergatePreferences
@@ -105,22 +105,35 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             job_details.label(
                 text=f"Progress: {selected_job.progress}", icon="SORTSIZE"
             )
-            images_progress: str = ""
+
+            downloaded_images: int = 0
+            loading_images: int = 0
+            erroneous_images: int = 0
             for image in selected_job.images:
                 if PurePath(image.file_dir) != PurePath(prefs.download_folder):
                     continue
                 if image.state == ImageState.DOWNLOADED:
-                    symbol: str = ProgressBarDots.FULL
-                elif image.state == ImageState.DOWNLOADING:
-                    symbol: str = ProgressBarDots.HALF
+                    downloaded_images += 1
+                elif (
+                    image.state == ImageState.DOWNLOADING
+                    or image.state == ImageState.MISSING
+                ):
+                    loading_images += 1
                 elif image.state == ImageState.DIRNOTFOUND:
-                    symbol: str = ProgressBarDots.ERROR
-                else:
-                    symbol: str = ProgressBarDots.EMPTY
-                images_progress += symbol
-            job_details.label(
-                text=f"Images: {images_progress}", icon="NODE_COMPOSITING"
-            )
+                    erroneous_images += 1
+                else:  # unknown image state
+                    erroneous_images += 1
+
+            # show downloaded, loading and erroneous images
+            images_text: str = f"Downloaded Images:"
+            if downloaded_images > 0:
+                images_text += f" {downloaded_images}"
+            if loading_images > 0:
+                images_text += f" ({loading_images} loading)"
+            if erroneous_images > 0:
+                images_text += f" Errors with {erroneous_images} images"
+            if downloaded_images > 0 or loading_images > 0 or erroneous_images > 0:
+                job_details.label(text=images_text, icon="NODE_COMPOSITING")
 
         buttons: UILayout = layout.split()
 

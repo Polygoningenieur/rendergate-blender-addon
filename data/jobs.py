@@ -172,7 +172,6 @@ def download_images_timer(context: Context, job: Job) -> None | float:
     """
 
     from ..properties.properties import RendergatePreferences
-    from ..operators.download_images import RENDERGATE_OT_download_images as download
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
 
