@@ -58,7 +58,7 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
             right.alignment = "RIGHT"
             right.label(
                 text="Logged In",
-                icon="KEYTYPE_JITTER_VEC",
+                icon="NODE_SOCKET_SHADER",
             )
             right.separator(factor=0)
 

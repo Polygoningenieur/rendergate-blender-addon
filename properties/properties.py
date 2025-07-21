@@ -152,6 +152,7 @@ class RendergatePreferences(AddonPreferences):
         name="Password",
         description="Your Rendergate login password",
         options={"HIDDEN", "SKIP_SAVE"},
+        subtype="PASSWORD",
     )
 
     aws_token: StringProperty(

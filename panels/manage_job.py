@@ -79,6 +79,9 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             # TODO display preview image
             # job_details.label(text=f"preview: {selected_job.preview_link}")
             # job_details.label(text=f"project_name: {selected_job.project_name}")
+            job_details.label(
+                text=f"{selected_job.stage}", icon="SEQ_STRIP_DUPLICATE"
+            )
             if selected_job.cost_estimation > Decimal("0.00"):
                 job_details.label(
                     text=f"Cost Estimation: ${selected_job.cost_estimation}",
@@ -99,9 +102,6 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                     text=f"Time Estimation: -",
                     icon="TEMP",
                 )
-            job_details.label(
-                text=f"Stage: {selected_job.stage}", icon="SEQ_STRIP_DUPLICATE"
-            )
             job_details.label(
                 text=f"Progress: {selected_job.progress}", icon="SORTSIZE"
             )

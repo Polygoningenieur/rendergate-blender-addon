@@ -87,7 +87,7 @@ class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
 
         except Exception as e:
             rendergate_logger.error(traceback.format_exc())
-            self._cleanup()
+            self._cleanup(context)
             self.report({"ERROR"}, f"Login failed: {str(e)}")
             self.quit()
             return
@@ -137,7 +137,14 @@ class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
         def get_jobs_timer_wrapper():
             """Wraps get_jobs to return None, which an bpy app timer expects."""
 
-            bpy.ops.rendergate.get_jobs("EXEC_DEFAULT")
+            # sometimes error occurs when calling the operator
+            # (might only happen in dev env)
+            try:
+                bpy.ops.rendergate.get_jobs("EXEC_DEFAULT")
+            except RuntimeError as e:
+                rendergate_logger.error(f"Error trying to get jobs: {e}")
+                props.getting_jobs = False
+                props.async_op_running = False
 
             return None
 

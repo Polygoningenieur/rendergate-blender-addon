@@ -18,13 +18,13 @@ from enum import StrEnum
 class Stage(StrEnum):
     """Rendergate stage values."""
 
-    INIT = "INIT"
-    UPLOADED = "UPLOADED"
-    PAYING = "PAYING"
-    RENDERING = "RENDERING"
-    FINISHED = "FINISHED"
-    CRASHED = "CRASHED"
-    UNKNOWN = "UNKNOWN"
+    INIT = "Initializing"
+    UPLOADED = "Uploaded"
+    PAYING = "Paying"
+    RENDERING = "Rendering"
+    FINISHED = "Finished"
+    CRASHED = "Crashed"
+    UNKNOWN = "Unknown Job Stage"
 
 
 class ImageState(StrEnum):
