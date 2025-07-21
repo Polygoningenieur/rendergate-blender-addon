@@ -36,10 +36,9 @@ class ImageState(StrEnum):
     DOWNLOADED = "DOWNLOADED"
 
 
-class ProgressBarDots(StrEnum):
-    """Symbols for a progress bar."""
+class DownloadTrigger(StrEnum):
+    """The properties that will trigger or influence the automatic image download."""
 
-    FULL = "⣿"
-    HALF = "⣤"
-    EMPTY = "⣀"
-    ERROR = "⡀"
+    JOB = "RENDER_JOB"
+    FOLDER = "DOWNLOAD_FOLDER"
+    AUTO = "AUTO_DOWNLOAD"

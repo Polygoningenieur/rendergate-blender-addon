@@ -24,7 +24,7 @@ from bpy.props import (
 )
 from .. import __package__ as base_package
 from ..utils.utils import class_to_register
-from .property_updates import RendergatePropertyUpdates
+from . import property_updates
 
 
 @class_to_register
@@ -178,8 +178,8 @@ class RendergatePreferences(AddonPreferences):
     jobs: EnumProperty(
         name="Render Jobs",
         description="All your rendergate.ch render jobs",
-        items=RendergatePropertyUpdates.create_job_list,
-        update=RendergatePropertyUpdates.check_for_downloads,
+        items=property_updates.create_job_list,
+        update=property_updates.update_selected_job,
         default=0,
     )
 
@@ -187,13 +187,13 @@ class RendergatePreferences(AddonPreferences):
         name="Download Folder",
         description="The folder where rendered results from Rendergate.ch will be stored in",
         subtype="DIR_PATH",
-        update=RendergatePropertyUpdates.check_for_downloads,
+        update=property_updates.update_download_folder,
         default="",
     )
 
     auto_download: BoolProperty(
         name="Auto-Download Rendered Images",
         description="Automatically downloads the rendered images of the selected job into the specified download folder",
-        update=RendergatePropertyUpdates.check_for_downloads,
+        update=property_updates.update_auto_download,
         default=True,
     )

@@ -152,6 +152,8 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
             jobs.set_selected_render_job(
                 context, jobs.get_jobs()[len(jobs.get_jobs()) - 1].identifier
             )
+        if current_job := jobs.get_selected_job(context):
+            jobs._previous_job = current_job
 
         props.getting_jobs = False
         props.async_op_running = False

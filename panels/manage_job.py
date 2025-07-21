@@ -18,13 +18,12 @@ from pathlib import PurePath
 from bpy.types import Panel, Context, UILayout
 from .panel import RendergatePanel
 from ..utils.utils import class_to_register
-from ..utils.models import Job, Image
-from ..utils.enums import ImageState, ProgressBarDots
+from ..utils.models import Job
+from ..utils.enums import ImageState
 from ..data import jobs
 from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render
-from ..operators.download_zip import RENDERGATE_OT_download_zip
 from ..operators.download_images import RENDERGATE_OT_download_images
 from ..operators.open_folder import RENDERGATE_OT_open_folder
 from ..operators.open_website import RENDERGATE_OT_open_website

@@ -22,15 +22,19 @@ from decimal import Decimal, InvalidOperation
 import humanize
 from dateutil import tz
 from datetime import datetime, tzinfo, timedelta
+from functools import partial
 from typing import Any
 from pathlib import PurePath
 from bpy.types import Context
 from ..utils import utils
 from ..utils.models import Job, Image
-from ..utils.enums import Stage, ImageState
+from ..utils.enums import Stage, ImageState, DownloadTrigger
 from ..utils.global_vars import rendergate_logger
 
 _jobs: list[Job] = []
+_previous_job: str = ""
+_previous_download_folder: str = ""
+_previous_task: Task = None
 
 
 def clear() -> None:
@@ -162,14 +166,52 @@ def construct_render_job(job_data: dict, index: int) -> Job:
     )
 
 
-def download_images_timer(context: Context, job: Job) -> None | float:
+def check_for_downloads(context: Context, updated_property: str = "") -> None:
+    """
+    Start a timer that frequently checks if we can download images and downloads them.
+    """
+
+    try:
+        bpy.app.timers.unregister(bpy.__rendergate_download)
+    except Exception:
+        pass
+
+    selected_job: Job = get_selected_job(context)
+
+    # there was an update made (downloads folder changed for example),
+    # so we want to stop all timers and tasks that are running with old data
+    if hasattr(selected_job, "images"):
+        selected_job.images.clear()
+
+    # use a partial to have a reference of the function, using lambda doesn't work
+    download_images_partial: partial = partial(
+        download_images_timer,
+        context=context,
+        job=selected_job,
+        updated_property=updated_property,
+    )
+    # add timer that constantly checks for downloadable images
+    bpy.app.timers.register(download_images_partial)
+    # keep reference so we can unregister anytime anywhere
+    bpy.__rendergate_download = download_images_partial
+
+
+def download_images_timer(
+    context: Context, job: Job, updated_property: str
+) -> None | float:
     """
     Downloads all rendered images of selected job into specified download folder.
 
     Runs as a blender app timer called on property updates on blenders main thread.
     Returning None stops the timer.
 
+    Everytime this function is called, we might want to stop the previous download.
+    For example when changing the download folder or the selected job.
     """
+
+    global _previous_job
+    global _previous_download_folder
+    global _previous_task
 
     from ..properties.properties import RendergatePreferences
 
@@ -182,6 +224,20 @@ def download_images_timer(context: Context, job: Job) -> None | float:
     if job is None:
         return None
 
+    if updated_property == DownloadTrigger.JOB:
+        if job.name == _previous_job:
+            return None
+        else:
+            _previous_job = job.name
+            stop_download()
+
+    elif updated_property == DownloadTrigger.FOLDER:
+        if prefs.download_folder == _previous_download_folder:
+            return None
+        else:
+            _previous_download_folder = prefs.download_folder
+            stop_download()
+
     if not job.stage == Stage.FINISHED:
         return None
 
@@ -192,14 +248,21 @@ def download_images_timer(context: Context, job: Job) -> None | float:
         return None
 
     task: Task = loop.create_task(download_images(context, job))
+    _previous_task = task
 
     bpy.app.timers.register(lambda: check_download_task(context, task))
 
     rendergate_logger.debug(f"Download check for {job.display_name}.")
 
-    utils.update_ui()
-
     return 2.0
+
+
+def stop_download():
+    """Cancels the running download task."""
+
+    if isinstance(_previous_task, Task):
+        _previous_task.cancel()
+        print("STOPPED TASK")
 
 
 async def download_images(context: Context, job: Job):
@@ -312,7 +375,9 @@ def check_download_task(context: Context, task: Task):
 
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
-    if task.done():
+    utils.update_ui()
+
+    if task.done() or task.cancelled() or task.cancelled():
         return None
     elif not prefs.auto_download:
         task.cancel()

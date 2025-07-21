@@ -24,6 +24,7 @@ from functools import partial
 from pathlib import Path, PurePath
 from asyncio import AbstractEventLoop
 from bpy.types import Operator, Context
+from ..data import jobs
 from ..utils.global_vars import rendergate_logger
 from ..utils.async_loop import AsyncModalOperatorMixin
 from ..utils.utils import class_to_register, catch_exception
@@ -117,6 +118,7 @@ class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
                 downloads_folder: Path = Path(Path.home()) / PurePath("rendergate")
                 downloads_folder.mkdir(exist_ok=True)
                 prefs.download_folder = str(downloads_folder)
+            jobs._previous_download_folder = prefs.download_folder
 
         props.async_op_running = False
         props.logging_in = False
