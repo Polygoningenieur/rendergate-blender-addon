@@ -34,7 +34,8 @@ from ..utils.global_vars import rendergate_logger
 _jobs: list[Job] = []
 _previous_job: str = ""
 _previous_download_folder: str = ""
-_previous_task: Task = None
+# a list of tasks, since there can be multiple downloads happening at the same time
+_previous_tasks: list[Task] = []
 
 
 def clear() -> None:
@@ -211,7 +212,6 @@ def download_images_timer(
 
     global _previous_job
     global _previous_download_folder
-    global _previous_task
 
     from ..properties.properties import RendergatePreferences
 
@@ -225,18 +225,14 @@ def download_images_timer(
         return None
 
     if updated_property == DownloadTrigger.JOB:
-        if job.name == _previous_job:
-            return None
-        else:
+        if job.name != _previous_job:
             _previous_job = job.name
-            stop_download()
+            stop_previous_download()
 
     elif updated_property == DownloadTrigger.FOLDER:
-        if prefs.download_folder == _previous_download_folder:
-            return None
-        else:
+        if prefs.download_folder != _previous_download_folder:
             _previous_download_folder = prefs.download_folder
-            stop_download()
+            stop_previous_download()
 
     if not job.stage == Stage.FINISHED:
         return None
@@ -245,24 +241,31 @@ def download_images_timer(
         return None
 
     if not prefs.auto_download:
+        stop_previous_download()
         return None
 
     task: Task = loop.create_task(download_images(context, job))
-    _previous_task = task
+    _previous_tasks.append(task)
 
-    bpy.app.timers.register(lambda: check_download_task(context, task))
+    bpy.app.timers.register(lambda: check_download_task(task))
 
-    rendergate_logger.debug(f"Download check for {job.display_name}.")
+    rendergate_logger.info(
+        f"Checking if there are any images to download for job {job.display_name}."
+    )
 
-    return 2.0
+    return 5.0
 
 
-def stop_download():
-    """Cancels the running download task."""
+def stop_previous_download():
+    """Cancels the running download tasks."""
 
-    if isinstance(_previous_task, Task):
-        _previous_task.cancel()
-        print("STOPPED TASK")
+    for task in _previous_tasks:
+        if isinstance(task, Task):
+            task.cancel()
+            task = None
+            rendergate_logger.info(f"Cancelled download task.")
+
+    _previous_tasks.clear()
 
 
 async def download_images(context: Context, job: Job):
@@ -363,24 +366,17 @@ async def download_images(context: Context, job: Job):
             rendergate_logger.info(f"Downloaded image {file_name}.")
 
 
-def check_download_task(context: Context, task: Task):
+def check_download_task(task: Task):
     """Runs the task as a timer on the blender main thread."""
-
-    from ..properties.properties import RendergatePreferences
 
     # let the event loop process pending tasks
     loop: AbstractEventLoop = asyncio.get_event_loop()
     loop.call_soon(loop.stop)
     loop.run_forever()
 
-    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-
     utils.update_ui()
 
-    if task.done() or task.cancelled() or task.cancelled():
-        return None
-    elif not prefs.auto_download:
-        task.cancel()
+    if task.cancelling() or task.cancelled() or task.done():
         return None
     else:
         return 0.1
