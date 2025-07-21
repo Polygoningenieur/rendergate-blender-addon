@@ -182,7 +182,8 @@ def download_images_timer(context: Context, job: Job) -> None | float:
     if job is None:
         return None
 
-    # TODO if job has no downloadable images (check status)
+    if not job.stage == Stage.FINISHED:
+        return None
 
     if not prefs.download_folder:
         return None
