@@ -14,13 +14,8 @@
 
 import bpy
 import boto3
-import asyncio
 from pathlib import PurePath
-from requests import Response  # requests is included in Blender 4.4
-from functools import partial
 from typing import Any
-from asyncio import AbstractEventLoop
-from json.decoder import JSONDecodeError
 from ..utils.async_loop import AsyncModalOperatorMixin
 from bpy.types import Operator, Context
 from ..utils.utils import (
@@ -29,9 +24,9 @@ from ..utils.utils import (
     progress,
     is_string_blank,
 )
-from ..data import jobs
-from ..utils import rest_client
+from ..rendergate import download, jobs
 from ..utils.models import Job
+from ..utils.enums import Stage
 from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..utils.global_vars import rendergate_logger
 
@@ -56,7 +51,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
             not props.async_op_running
             and selected_job is not None
             and not is_string_blank(prefs.download_folder)
-            and selected_job.stage in ["FINISHED"]
+            and selected_job.stage in [Stage.FINISHED]
         ):
             return True
         else:
@@ -79,7 +74,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
             description += "\nNo render job selected"
         if is_string_blank(prefs.download_folder):
             description += "\nPlease specify a download folder before downloading"
-        if selected_job is not None and selected_job.stage not in ["FINISHED"]:
+        if selected_job is not None and selected_job.stage not in [Stage.FINISHED]:
             description += "\nRender job is not done rendering yet"
 
         return description
@@ -121,7 +116,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
 
         # get download credentials
         BUCKET, BASEKEY, ACCESS_KEY, SECRET_KEY, SESSION_TOKEN = (
-            await self.get_download_credentials(context)
+            await download.get_download_credentials(context)
         )
         if (
             not BUCKET
@@ -151,7 +146,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         )
 
         # get list of downloadable images
-        contents: list[dict[str, Any]] | None = await self.get_download_content(
+        contents: list[dict[str, Any]] | None = await download.get_download_content(
             client, BUCKET, BASEKEY
         )
         if contents is None:
@@ -186,7 +181,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
             file_path: PurePath = PurePath(download_folder / file_name)
 
             try:
-                await self.download_image(client, BUCKET, key, file_path)
+                await download.download_image(client, BUCKET, key, file_path)
             except FileNotFoundError:
                 continue
 
@@ -213,74 +208,3 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         self.report({"INFO"}, "Images downloaded.")
         self.quit()
         return
-
-    @staticmethod
-    async def get_download_credentials(
-        context: Context,
-    ) -> tuple[str, str, str, str, str]:
-        """Get the download credentials from AWS."""
-
-        props: RendergateProperties = context.scene.rendergate_properties
-        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-
-        selected_job: Job = jobs.get_selected_job(context)
-
-        # download render job
-        response: Response | str = await rest_client.request(
-            url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/downloadPerm",
-            headers={"auth": prefs.aws_token},
-            request="GET",
-        )
-
-        # error occured
-        if isinstance(response, str):
-            rendergate_logger.error(
-                f"Getting download credentials returned an error: {response}"
-            )
-            return None, None, None, None, None
-
-        try:
-            response_json: dict = response.json()
-        except JSONDecodeError as e:
-            rendergate_logger.error(f"Couldn't decode boto3 s3 response: {e}")
-            return None, None, None, None, None
-
-        credentials: dict = response_json.get("credentials", {})
-        BUCKET: str = response_json.get("bucket")
-        BASEKEY: str = response_json.get("baseKey")
-        ACCESS_KEY: str = credentials.get("AccessKeyId")
-        SECRET_KEY: str = credentials.get("SecretAccessKey")
-        SESSION_TOKEN: str = credentials.get("SessionToken")
-
-        return BUCKET, BASEKEY, ACCESS_KEY, SECRET_KEY, SESSION_TOKEN
-
-    @staticmethod
-    async def get_download_content(client, bucket: str, base_key: str):
-        """
-        Get the Contents list of the download, containing the files that can be downloaded.
-        """
-
-        loop: AbstractEventLoop = asyncio.get_event_loop()
-
-        list_objects_partial = partial(
-            client.list_objects_v2, Bucket=bucket, Prefix=base_key
-        )
-        s3_response: dict = await loop.run_in_executor(None, list_objects_partial)
-        if not isinstance(s3_response, dict):
-            return None
-
-        # list of downloadable images is in Contents
-        return s3_response.get("Contents", [])
-
-    @staticmethod
-    async def download_image(client, bucket: str, key: str, file_path: PurePath):
-        """Downloads a file to the specified file_path."""
-
-        loop: AbstractEventLoop = asyncio.get_event_loop()
-
-        download_file_partial = partial(client.download_file, bucket, key, file_path)
-        try:
-            await loop.run_in_executor(None, download_file_partial)
-        except FileNotFoundError as e:
-            rendergate_logger.error(e)
-            raise FileNotFoundError(e)

@@ -26,6 +26,7 @@ from functools import partial
 from typing import Any
 from pathlib import PurePath
 from bpy.types import Context
+from . import download
 from ..utils import utils
 from ..utils.models import Job, Image
 from ..utils.enums import Stage, ImageState, DownloadTrigger
@@ -276,7 +277,6 @@ async def download_images(context: Context, job: Job):
     """
 
     from ..properties.properties import RendergatePreferences
-    from ..operators.download_images import RENDERGATE_OT_download_images as download
 
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 

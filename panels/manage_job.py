@@ -20,7 +20,7 @@ from .panel import RendergatePanel
 from ..utils.utils import class_to_register
 from ..utils.models import Job
 from ..utils.enums import ImageState
-from ..data import jobs
+from ..rendergate import jobs
 from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render

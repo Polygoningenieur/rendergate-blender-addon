@@ -24,7 +24,7 @@ from functools import partial
 from pathlib import Path, PurePath
 from asyncio import AbstractEventLoop
 from bpy.types import Operator, Context
-from ..data import jobs
+from ..rendergate import jobs
 from ..utils.global_vars import rendergate_logger
 from ..utils.async_loop import AsyncModalOperatorMixin
 from ..utils.utils import class_to_register, catch_exception

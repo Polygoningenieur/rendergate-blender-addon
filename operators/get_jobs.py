@@ -25,7 +25,7 @@ from ..utils.utils import class_to_register, catch_exception
 from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..utils.global_vars import rendergate_logger
 from ..utils.models import Job
-from ..data import jobs
+from ..rendergate import jobs
 
 
 @class_to_register

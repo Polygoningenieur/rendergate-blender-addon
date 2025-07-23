@@ -15,7 +15,7 @@
 from bpy.types import Context
 from ..utils.models import Job
 from ..utils.enums import DownloadTrigger
-from ..data import jobs
+from ..rendergate import jobs
 
 
 def create_job_list(self, context: Context):

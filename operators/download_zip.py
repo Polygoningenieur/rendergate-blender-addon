@@ -25,9 +25,10 @@ from ..utils.utils import (
     progress,
     is_string_blank,
 )
-from ..data import jobs
+from ..rendergate import jobs
 from ..utils import rest_client
 from ..utils.models import Job
+from ..utils.enums import Stage
 from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..utils.global_vars import rendergate_logger
 
@@ -52,7 +53,7 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
             not props.async_op_running
             and selected_job is not None
             and not is_string_blank(prefs.download_folder)
-            and selected_job.stage in ["FINISHED"]
+            and selected_job.stage in [Stage.FINISHED]
         ):
             return True
         else:
@@ -75,7 +76,7 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
             description += "\nNo render job selected"
         if is_string_blank(prefs.download_folder):
             description += "\nPlease specify a download folder before downloading"
-        if selected_job is not None and selected_job.stage not in ["FINISHED"]:
+        if selected_job is not None and selected_job.stage not in [Stage.FINISHED]:
             description += "\nRender job is not done rendering yet"
 
         return description

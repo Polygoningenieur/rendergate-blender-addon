@@ -22,9 +22,10 @@ from ..utils.utils import (
     catch_exception,
     progress,
 )
-from ..data import jobs
+from ..rendergate import jobs
 from ..utils import rest_client
 from ..utils.models import Job
+from ..utils.enums import Stage
 from ..utils.global_vars import rendergate_logger
 from ..properties.properties import RendergateProperties, RendergatePreferences
 
@@ -120,7 +121,7 @@ class RENDERGATE_OT_invoke_render(Operator):
         if props.async_op_running:
             return False
         if selected_job is not None:
-            return True if selected_job.stage in ["UPLOADED"] else False
+            return True if selected_job.stage in [Stage.UPLOADED] else False
         else:
             return False
 
