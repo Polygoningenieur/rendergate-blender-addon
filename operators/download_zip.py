@@ -16,7 +16,7 @@ import bpy
 import httpx
 from typing import Any, Callable
 from pathlib import PurePath
-from requests import Response  # requests is included in Blender 4.4
+from requests import Response  # requests is included in Blender 4.5
 from ..utils.async_loop import AsyncModalOperatorMixin
 from bpy.types import Operator, Context
 from ..utils.utils import (

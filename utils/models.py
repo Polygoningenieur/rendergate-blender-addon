@@ -50,3 +50,12 @@ class Job:
 
     def __eq__(self, other: str):
         return self.identifier == other
+
+
+@dataclass
+class S3Credentials:
+    bucket: str | None
+    basekey: str | None
+    access_key: str | None
+    secret_access_key: str | None
+    session_token: str | None

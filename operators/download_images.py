@@ -114,40 +114,9 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         props.download_images_progress_text = "10% - Downloading..."
         await progress(props, "download_images_progress", progress_start, context)
 
-        # get download credentials
-        BUCKET, BASEKEY, ACCESS_KEY, SECRET_KEY, SESSION_TOKEN = (
-            await download.get_download_credentials(context)
-        )
-        if (
-            not BUCKET
-            or not BASEKEY
-            or not ACCESS_KEY
-            or not SECRET_KEY
-            or not SESSION_TOKEN
-        ):
-            await progress(props, "download_images_progress", 1.0, context)
-            self.report(
-                {"ERROR"},
-                f"Couldn't get s3 credentials to initiate download.\n{BUCKET = }\n{BASEKEY = }\n{ACCESS_KEY = }\n{SECRET_KEY = }\n{SESSION_TOKEN = }",
-            )
-            self._cleanup(context)
-            self.quit()
-            return
-
-        props.download_images_progress_text = "15% - Downloading..."
-        await progress(props, "download_images_progress", 0.15, context)
-
-        # create s3 client
-        client = boto3.client(
-            "s3",
-            aws_access_key_id=ACCESS_KEY,
-            aws_secret_access_key=SECRET_KEY,
-            aws_session_token=SESSION_TOKEN,
-        )
-
         # get list of downloadable images
         contents: list[dict[str, Any]] | None = await download.get_download_content(
-            client, BUCKET, BASEKEY
+            context
         )
         if contents is None:
             await progress(props, "download_images_progress", 1.0, context)
@@ -181,7 +150,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
             file_path: PurePath = PurePath(download_folder / file_name)
 
             try:
-                await download.download_image(client, BUCKET, key, file_path)
+                await download.download_image(key, file_path)
             except FileNotFoundError:
                 continue
 

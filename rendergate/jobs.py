@@ -168,7 +168,7 @@ def construct_render_job(job_data: dict, index: int) -> Job:
     )
 
 
-def check_for_downloads(context: Context, updated_property: str = "") -> None:
+def check_for_downloads(context: Context, trigger: DownloadTrigger) -> None:
     """
     Start a timer that frequently checks if we can download images and downloads them.
     """
@@ -190,7 +190,7 @@ def check_for_downloads(context: Context, updated_property: str = "") -> None:
         download_images_timer,
         context=context,
         job=selected_job,
-        updated_property=updated_property,
+        trigger=trigger,
     )
     # add timer that constantly checks for downloadable images
     bpy.app.timers.register(download_images_partial)
@@ -199,7 +199,7 @@ def check_for_downloads(context: Context, updated_property: str = "") -> None:
 
 
 def download_images_timer(
-    context: Context, job: Job, updated_property: str
+    context: Context, job: Job, trigger: DownloadTrigger
 ) -> None | float:
     """
     Downloads all rendered images of selected job into specified download folder.
@@ -225,12 +225,12 @@ def download_images_timer(
     if job is None:
         return None
 
-    if updated_property == DownloadTrigger.JOB:
+    if trigger == DownloadTrigger.JOB:
         if job.name != _previous_job:
             _previous_job = job.name
             stop_previous_download()
 
-    elif updated_property == DownloadTrigger.FOLDER:
+    elif trigger == DownloadTrigger.FOLDER:
         if prefs.download_folder != _previous_download_folder:
             _previous_download_folder = prefs.download_folder
             stop_previous_download()
@@ -250,11 +250,7 @@ def download_images_timer(
 
     bpy.app.timers.register(lambda: check_download_task(task))
 
-    rendergate_logger.info(
-        f"Checking if there are any images to download for job {job.display_name}."
-    )
-
-    return 5.0
+    return 60.0
 
 
 def stop_previous_download():
@@ -264,17 +260,12 @@ def stop_previous_download():
         if isinstance(task, Task):
             task.cancel()
             task = None
-            rendergate_logger.info(f"Cancelled download task.")
 
     _previous_tasks.clear()
 
 
 async def download_images(context: Context, job: Job):
-    """Download missing images.
-
-    # TODO optimize: get download credentials only once (are valid for 1 hour)
-    # TODO then use the same client
-    """
+    """Download missing images."""
 
     from ..properties.properties import RendergatePreferences
 
@@ -284,31 +275,8 @@ async def download_images(context: Context, job: Job):
     # we still download to the same initial folder
     download_folder: PurePath = PurePath(bpy.path.abspath(prefs.download_folder))
 
-    # get download credentials
-    BUCKET, BASEKEY, ACCESS_KEY, SECRET_KEY, SESSION_TOKEN = (
-        await download.get_download_credentials(context)
-    )
-    if (
-        not BUCKET
-        or not BASEKEY
-        or not ACCESS_KEY
-        or not SECRET_KEY
-        or not SESSION_TOKEN
-    ):
-        return
-
-    # create s3 client
-    client = boto3.client(
-        "s3",
-        aws_access_key_id=ACCESS_KEY,
-        aws_secret_access_key=SECRET_KEY,
-        aws_session_token=SESSION_TOKEN,
-    )
-
     # get list of downloadable images
-    contents: list[dict[str, Any]] | None = await download.get_download_content(
-        client, BUCKET, BASEKEY
-    )
+    contents: list[dict[str, Any]] | None = await download.get_download_content(context)
     if contents is None:
         return
     if len(contents) == 0:
@@ -357,7 +325,7 @@ async def download_images(context: Context, job: Job):
         # download image
         image.state = ImageState.DOWNLOADING
         try:
-            await download.download_image(client, BUCKET, key, file_path)
+            await download.download_image(key, file_path)
         except FileNotFoundError as e:
             image.state = ImageState.DIRNOTFOUND
             rendergate_logger.info(f"Image {file_name} could not be downlaoded: {e}")

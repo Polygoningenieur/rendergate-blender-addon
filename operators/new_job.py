@@ -19,7 +19,7 @@ import math
 from bpy.props import BoolProperty
 from bpy.types import Operator, Context, Event, UILayout
 from typing import Any
-from requests import Response  # requests is included in Blender 4.4
+from requests import Response  # requests is included in Blender 4.5
 from .get_jobs import RENDERGATE_OT_get_jobs
 from ..rendergate import jobs
 from ..utils.async_loop import AsyncModalOperatorMixin

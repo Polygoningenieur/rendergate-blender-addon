@@ -18,7 +18,7 @@
 import bpy
 from typing import Any
 from bpy.types import Operator, Context
-from requests import Response  # requests is included in Blender 4.4
+from requests import Response  # requests is included in Blender 4.5
 from ..utils.async_loop import AsyncModalOperatorMixin
 from ..utils import rest_client
 from ..utils.utils import class_to_register, catch_exception

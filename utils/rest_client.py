@@ -15,7 +15,7 @@
 import json
 import asyncio
 from asyncio import AbstractEventLoop, Future
-from requests import Response, Session  # requests gets delivered with Blender 4.4
+from requests import Response, Session  # requests gets delivered with Blender 4.5
 from requests.exceptions import (
     HTTPError,
     Timeout,
