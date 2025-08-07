@@ -24,14 +24,14 @@ from ..operators.open_prefs import RENDERGATE_OT_open_prefs
 class RendergatePanel:
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
-    bl_context = "render"
+    bl_context = "output"
     bl_options = {"DEFAULT_CLOSED"}
 
 
 @class_to_register
 class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
     """
-    Creates a Panel in the render properties window.
+    Creates a Panel in the output properties.
     TODO implement log out operator
     """
 
