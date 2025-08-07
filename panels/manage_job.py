@@ -101,8 +101,13 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                     text=f"Time Estimation: -",
                     icon="TEMP",
                 )
+
+            if not isinstance(selected_job.progress, int):
+                progress: int = 0
+            else:
+                progress: int = int(selected_job.progress * 100)
             job_details.label(
-                text=f"Progress: {selected_job.progress}", icon="SORTSIZE"
+                text=f"Progress: {progress}%", icon="SORTSIZE"
             )
 
             downloaded_images: int = 0
