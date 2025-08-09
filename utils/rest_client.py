@@ -102,6 +102,8 @@ async def request(
         elif response.status_code >= 300 and response.status_code < 400:
             return format_failed_response(response, response.status_code, "Redirection")
         elif response.status_code == 401:
+            # TODO Token expired! Getting new id token with refresh token
+            # if refresh token also expired, let user login again
             return f"Token expired. Please log in again."
         elif response.status_code >= 400 and response.status_code < 500:
             return format_failed_response(

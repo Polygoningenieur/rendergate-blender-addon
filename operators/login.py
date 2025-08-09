@@ -14,17 +14,11 @@
 
 import os
 import bpy
-import random
-import string
-import asyncio
 import traceback
 from typing import Any
-from warrant import Cognito
-from functools import partial
 from pathlib import Path, PurePath
-from asyncio import AbstractEventLoop
 from bpy.types import Operator, Context
-from ..rendergate import jobs
+from ..rendergate import jobs, login
 from ..utils.global_vars import rendergate_logger
 from ..utils.async_loop import AsyncModalOperatorMixin
 from ..utils.utils import class_to_register, catch_exception
@@ -62,51 +56,20 @@ class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
         Logs into AWS cognito with warrant (using boto3).
         """
 
-        loop: AbstractEventLoop = asyncio.get_event_loop()
-
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
         props.async_op_running = True
         props.logging_in = True
 
-        # aws authentication
-        # TODO change to production
-        REGION: str = "us-east-2"
-        USER_POOL_ID: str = "us-east-2_0iJztlRUB"
-        USER_POOL_WEB_CLIENT_ID: str = "6m7eldka3q9f20nmev7smovnf6"
-
         try:
-            user: Cognito = Cognito(
-                user_pool_id=USER_POOL_ID,
-                client_id=USER_POOL_WEB_CLIENT_ID,
-                user_pool_region=REGION,
-                username=prefs.username,
-            )
-            authenticate_partial = partial(user.authenticate, password=prefs.password)
-            await loop.run_in_executor(None, authenticate_partial)
-
+            await login.login(context)
         except Exception as e:
             rendergate_logger.error(traceback.format_exc())
             self._cleanup(context)
             self.report({"ERROR"}, f"Login failed: {str(e)}")
             self.quit()
             return
-
-        # login sucessfull
-        prefs.aws_token = user.id_token
-
-        # from Blender ID Authentication Addon:
-        # Prevent saving the password in user preferences
-        # Overwrite the password with a random string,
-        # as just setting to '' might only replace the first byte with 0
-        password_length: int = len(prefs.password)
-        random_string: str = "".join(
-            random.choice(string.ascii_uppercase + string.digits)
-            for _ in range(password_length + 16)
-        )
-        prefs.password = random_string
-        prefs.password = ""
 
         # set initial download folder
         if prefs.download_folder == "":

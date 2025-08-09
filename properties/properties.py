@@ -162,6 +162,13 @@ class RendergatePreferences(AddonPreferences):
         options={"HIDDEN", "SKIP_SAVE"},
     )
 
+    aws_refresh_token: StringProperty(
+        name="AWS Refresh Token",
+        description="Token to get a new login id token after it expired.",
+        default="",
+        options={"HIDDEN", "SKIP_SAVE"},
+    )
+
     job_name: StringProperty(
         name="Job Name*",
         description="Name of the job that will be created",
