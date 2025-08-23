@@ -23,6 +23,7 @@ from ..utils.global_vars import rendergate_logger
 from ..utils.async_loop import AsyncModalOperatorMixin
 from ..utils.utils import class_to_register, catch_exception
 from ..properties.properties import RendergateProperties, RendergatePreferences
+from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 
 
 @class_to_register
@@ -94,29 +95,14 @@ class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
         except:
             pass
 
-        # NOTE bpy operators (regular or async) need to be called
-        # to run in Blenders main thread, if called from async mixin
-        # use bpy.app.timers to schedule a function to run in the main thread
-        # also the app timer expects None if the timer should stop,
-        # so we wrap get_jobs in another function
-        def get_jobs_timer_wrapper():
-            """Wraps get_jobs to return None, which an bpy app timer expects."""
-
-            # sometimes error occurs when calling the operator
-            # (might only happen in dev env)
-            try:
-                bpy.ops.rendergate.get_jobs("EXEC_DEFAULT")
-            except RuntimeError as e:
-                rendergate_logger.error(f"Error trying to get jobs: {e}")
-                props.getting_jobs = False
-                props.async_op_running = False
-
-            return None
-
+        # needs to be last,
+        # because the self.quit() in the other async_execute also quits this method
         try:
-            bpy.app.timers.register(get_jobs_timer_wrapper)
+            # pass self as None,
+            # so self.quit() in get_jobs.async_execute doesn't also quit this async method here
+            await RENDERGATE_OT_get_jobs.async_execute(None, context, {})
         except Exception as e:
-            rendergate_logger.info(f"Error getting jobs: {e}")
+            rendergate_logger.error(f"{repr(e)}")
 
         self.report({"INFO"}, "Login successfull.")
         self.quit()
