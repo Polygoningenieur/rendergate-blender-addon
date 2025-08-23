@@ -22,6 +22,7 @@ from requests.exceptions import (
     ConnectionError,
     RequestException,
 )
+from ..utils.global_vars import rendergate_logger
 
 
 async def request(
@@ -29,7 +30,8 @@ async def request(
     headers: dict = None,
     payload: dict = None,
     files: dict = None,
-    request: str = "POST",
+    request_type: str = "POST",
+    token_already_refreshed: bool = False,
 ) -> Response | str:
     """Make a generic REST request to a service.
 
@@ -49,7 +51,7 @@ async def request(
     session: Session = Session()
 
     try:
-        if request == "POST":
+        if request_type == "POST":
             future: Future = loop.run_in_executor(
                 None,
                 lambda: session.post(
@@ -60,7 +62,7 @@ async def request(
                     timeout=10,
                 ),
             )
-        elif request == "POST-DATA":
+        elif request_type == "POST-DATA":
             future: Future = loop.run_in_executor(
                 None,
                 lambda: session.post(
@@ -69,7 +71,7 @@ async def request(
                     timeout=10,
                 ),
             )
-        elif request == "PUT":
+        elif request_type == "PUT":
             future: Future = loop.run_in_executor(
                 None,
                 lambda: session.put(
@@ -97,14 +99,34 @@ async def request(
             return format_failed_response(
                 response, response.status_code, "Informational Response"
             )
+        # elif response.status_code == 200:
+        #     # Token expired! Getting new id token with refresh token
+        #     # if refresh token also expired, let user login again
+        #     from ..rendergate import login
+
+        #     try:
+        #         rendergate_logger.debug(f"Refreshing token...")
+        #         login.refresh_id_token()
+        #     except AttributeError as e:
+        #         return f"Token expired. Please log in again: {e}"
+        #     else:
+        #         if token_already_refreshed:
+        #             return f"Token expired. Please log in again."
+        #         else:
+        #             # request again with the refreshed token
+        #             rendergate_logger.debug(f"Requesting again with refreshed token...")
+        #             return await request(
+        #                 url=url,
+        #                 headers=headers,
+        #                 payload=payload,
+        #                 files=files,
+        #                 request_type=request_type,
+        #                 token_already_refreshed=True,
+        #             )
         elif response.status_code >= 200 and response.status_code < 300:
             return response
         elif response.status_code >= 300 and response.status_code < 400:
             return format_failed_response(response, response.status_code, "Redirection")
-        elif response.status_code == 401:
-            # TODO Token expired! Getting new id token with refresh token
-            # if refresh token also expired, let user login again
-            return f"Token expired. Please log in again."
         elif response.status_code >= 400 and response.status_code < 500:
             return format_failed_response(
                 response, response.status_code, "Client Error"
@@ -116,7 +138,7 @@ async def request(
         else:
             response.raise_for_status()
     except (HTTPError, ConnectionError, Timeout, RequestException) as e:
-        return f"Error requesting from API {repr(e)}.\n{url=}\n{payload=}\n{headers=}\n{files=}\n{request=}\n"
+        return f"Error requesting from API {repr(e)}.\n{url=}\n{payload=}\n{headers=}\n{files=}\n{request_type=}\n"
     except Exception as e:
         return f"Unknown error requesting. {repr(e)}"
 

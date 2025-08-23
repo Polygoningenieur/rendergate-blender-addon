@@ -88,7 +88,7 @@ async def _get_download_credentials(context: Context) -> S3Credentials:
     response: Response | str = await rest_client.request(
         url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/downloadPerm",
         headers={"auth": prefs.aws_token},
-        request="GET",
+        request_type="GET",
     )
 
     # error occured

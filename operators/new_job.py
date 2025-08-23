@@ -108,7 +108,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
             url=f"{props.rendergate_api_url}/project",
             headers=headers,
             payload=payload,
-            request="POST",
+            request_type="POST",
         )
 
         # error occured
@@ -166,7 +166,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
                 part_response: Response | str = await rest_client.request(
                     url=upload_url,
                     payload=segment,
-                    request="PUT",
+                    request_type="PUT",
                 )
 
                 # error occured
@@ -195,7 +195,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         complete_resp: Response | str = await rest_client.request(
             url=complete_url,
             payload=complete_body,
-            request="POST-DATA",
+            request_type="POST-DATA",
         )
         # error occured
         if isinstance(complete_resp, str):

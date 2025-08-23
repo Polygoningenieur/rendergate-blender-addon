@@ -76,7 +76,7 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
             url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/startPay",
             headers=headers,
             payload=payload,
-            request="POST",
+            request_type="POST",
         )
 
         # error occured or response failed

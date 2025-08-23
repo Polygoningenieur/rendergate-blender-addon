@@ -118,7 +118,7 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
         response: Response | str = await rest_client.request(
             url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/download",
             headers=headers,
-            request="POST",
+            request_type="POST",
         )
 
         # error occured

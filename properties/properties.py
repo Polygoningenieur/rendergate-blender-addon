@@ -14,6 +14,7 @@
 
 # pyright: reportInvalidTypeForm=false
 
+import bpy
 from bpy.types import PropertyGroup, AddonPreferences, Context
 from bpy.props import (
     StringProperty,
@@ -127,13 +128,19 @@ class RendergatePreferences(AddonPreferences):
     """
 
     @staticmethod
-    def preferences(context: Context):
+    def preferences(context: Context = None):
         """Get the rendergate preferences."""
 
-        try:
-            preferences = context.preferences
-        except AttributeError:
-            preferences = context.user_preferences
+        if context is None:
+            try:
+                preferences = bpy.context.preferences
+            except AttributeError:
+                preferences = bpy.context.user_preferences
+        else:
+            try:
+                preferences = context.preferences
+            except AttributeError:
+                preferences = context.user_preferences
 
         addon_prefs = preferences.addons[base_package].preferences
         return addon_prefs

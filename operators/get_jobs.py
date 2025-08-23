@@ -104,7 +104,7 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
         response: Response | str = await rest_client.request(
             url=f"{props.rendergate_api_url}/project",
             headers=headers,
-            request="GET",
+            request_type="GET",
         )
 
         # error occured
