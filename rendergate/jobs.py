@@ -98,6 +98,15 @@ def construct_render_job(job_data: dict, index: int) -> Job:
         stage: Stage = Stage[job_data.get("stage", Stage.UNKNOWN)]
     except KeyError:
         stage: Stage = Stage.UNKNOWN
+
+    # check if time and cost has been calculated yet, if not, stage is CALCULATED
+    if (
+        stage == Stage.UPLOADED
+        and job_data.get("costEst") is None
+        and job_data.get("timeEst") is None
+    ):
+        stage = Stage.CALCULATING
+
     progress: str = job_data.get("progress", "")
 
     # create decimals for the prices to not have floating point precision errors

@@ -19,6 +19,9 @@ class Stage(StrEnum):
     """Rendergate stage values."""
 
     INIT = "Initializing"
+    # CALCULATING doesn't exist on rendergate (yet),
+    # it is just UPLOADED without timeEst & costEst
+    CALCULATING = "Calculating"
     UPLOADED = "Uploaded"
     PAYING = "Paying"
     RENDERING = "Rendering"
