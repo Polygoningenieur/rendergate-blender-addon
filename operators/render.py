@@ -28,6 +28,7 @@ from ..utils.models import Job
 from ..utils.enums import Stage
 from ..utils.global_vars import rendergate_logger
 from ..properties.properties import RendergateProperties, RendergatePreferences
+from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 
 
 @class_to_register
@@ -98,6 +99,16 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         await progress(props, "render_job_progress", 0.999, context, sleep=1)
         await progress(props, "render_job_progress", 1.0, context)
         self._cleanup(context)
+
+        # needs to be last,
+        # because the self.quit() in the other async_execute also quits this method
+        try:
+            # pass self as None,
+            # so self.quit() in get_jobs.async_execute doesn't also quit this async method here
+            await RENDERGATE_OT_get_jobs.async_execute(None, context, {})
+        except Exception as e:
+            rendergate_logger.error(f"{repr(e)}")
+
         self.report({"INFO"}, "Job rendering.")
         self.quit()
         return
