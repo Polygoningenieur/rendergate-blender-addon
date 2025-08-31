@@ -14,6 +14,7 @@
 
 import json
 import asyncio
+import traceback
 from asyncio import AbstractEventLoop, Future
 from requests import Response, Session  # requests gets delivered with Blender 4.5
 from requests.exceptions import (
@@ -99,34 +100,34 @@ async def request(
             return format_failed_response(
                 response, response.status_code, "Informational Response"
             )
-        # elif response.status_code == 200:
-        #     # Token expired! Getting new id token with refresh token
-        #     # if refresh token also expired, let user login again
-        #     from ..rendergate import login
-
-        #     try:
-        #         rendergate_logger.debug(f"Refreshing token...")
-        #         login.refresh_id_token()
-        #     except AttributeError as e:
-        #         return f"Token expired. Please log in again: {e}"
-        #     else:
-        #         if token_already_refreshed:
-        #             return f"Token expired. Please log in again."
-        #         else:
-        #             # request again with the refreshed token
-        #             rendergate_logger.debug(f"Requesting again with refreshed token...")
-        #             return await request(
-        #                 url=url,
-        #                 headers=headers,
-        #                 payload=payload,
-        #                 files=files,
-        #                 request_type=request_type,
-        #                 token_already_refreshed=True,
-        #             )
         elif response.status_code >= 200 and response.status_code < 300:
             return response
         elif response.status_code >= 300 and response.status_code < 400:
             return format_failed_response(response, response.status_code, "Redirection")
+        elif response.status_code == 401:
+            # Unauthorized, log in again
+            from ..rendergate import login
+
+            try:
+                rendergate_logger.debug(f"Unauthorized, refreshing token...")
+                login.refresh_id_token()
+            except AttributeError:
+                return f"Token expired. Please log in again."
+            else:
+                if token_already_refreshed:
+                    # makes sure we only try to refresh the token once
+                    return f"Token expired. Please log in again."
+                else:
+                    # request again with the refreshed token
+                    rendergate_logger.debug(f"Requesting again with refreshed token...")
+                    return await request(
+                        url=url,
+                        headers=headers,
+                        payload=payload,
+                        files=files,
+                        request_type=request_type,
+                        token_already_refreshed=True,
+                    )
         elif response.status_code >= 400 and response.status_code < 500:
             return format_failed_response(
                 response, response.status_code, "Client Error"
@@ -140,7 +141,10 @@ async def request(
     except (HTTPError, ConnectionError, Timeout, RequestException) as e:
         return f"Error requesting from API {repr(e)}.\n{url=}\n{payload=}\n{headers=}\n{files=}\n{request_type=}\n"
     except Exception as e:
-        return f"Unknown error requesting. {repr(e)}"
+        rendergate_logger.error(
+            f"Unknown error requesting. See logs for more info. {traceback.format_exc()}"
+        )
+        return f"Unknown error requesting. See consolse for more info."
 
 
 def format_failed_response(

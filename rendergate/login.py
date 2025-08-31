@@ -68,9 +68,16 @@ async def login(context: Context) -> None:
 
 
 def refresh_id_token() -> None:
-    """Token expired, getting new id token with refresh token."""
+    """
+    Token expired, getting new id token with refresh token.
+    The exact cause of failure is not important to the user so we just log it. 
+    """
 
     prefs: RendergatePreferences = RendergatePreferences.preferences()
+
+    if not prefs.aws_refresh_token:
+        rendergate_logger.error(f"No refresh token available. Please log in again.")
+        raise AttributeError()
 
     user: Cognito = Cognito(
         user_pool_id=USER_POOL_ID,
@@ -82,7 +89,8 @@ def refresh_id_token() -> None:
     try:
         expired: bool = user.renew_access_token()
     except AttributeError as e:
-        raise AttributeError(f"Error refreshing Cognito user token: {e}")
+        rendergate_logger.error(f"Error refreshing Cognito user token: {e}")
+        raise AttributeError()
 
     prefs.aws_token = user.id_token
     prefs.aws_refresh_token = user.refresh_token
