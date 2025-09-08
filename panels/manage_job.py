@@ -102,8 +102,8 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                     icon="TEMP",
                 )
 
-            if not isinstance(selected_job.progress, int):
-                progress: int = 0
+            if not isinstance(selected_job.progress, float):
+                progress: int = 0.0
             else:
                 progress: int = int(selected_job.progress * 100)
             job_details.label(

@@ -164,8 +164,21 @@ def construct_render_job(
     if stage == Stage.UPLOADED and job_data.get(time_est_key) is None:
         stage = Stage.CALCULATING
 
-    progress: str = job_data.get("progress", "")
+    progress: float | dict = job_data.get("progress", "")
+    if from_update_api:
+        progress_amount_dict: float = progress.get("progress", {})
+        file_settings: dict = job_data.get("fileSettings", {})
+        start_frame: int = file_settings.get("start", 1)
+        stop_frame: int = file_settings.get("end", 1)
+        num_frames: int = stop_frame - start_frame + 1
+        if num_frames <= 0:
+            progress_amount: float = 0.0
+        else:
+            progress_amount: float = progress_amount_dict.get("current", 0) / num_frames
+    else:
+        progress_amount: float = job_data.get("progress", 0.0)
 
+    rendergate_logger.info(f"PROGRESS: {progress_amount}")
     # API responses are not consitent for /project/{id} and /project
     # so we need to make a distinction
     estimation_dict: dict = progress if from_update_api else job_data
@@ -230,7 +243,7 @@ def construct_render_job(
     time_human: str = humanize.precisedelta(time_delta, minimum_unit="minutes")
 
     description: str = (
-        f"Job {index}\nCreated: {created_ago}\nProject: {project_name}\nStage: {stage}\nProgress: {progress}\nCost Estimation: ${cost_estimation}\nCost: {cost}\nTime Estimation: {time_estimation_human}\nTime: {time_human}"
+        f"Job {index}\nCreated: {created_ago}\nProject: {project_name}\nStage: {stage}\nProgress: {progress_amount}\nCost Estimation: ${cost_estimation}\nCost: {cost}\nTime Estimation: {time_estimation_human}\nTime: {time_human}"
     )
 
     return Job(
@@ -242,7 +255,7 @@ def construct_render_job(
         created=created_ago,
         project_name=project_name,
         stage=stage,
-        progress=progress,
+        progress=progress_amount,
         cost_estimation=cost_estimation,
         cost=cost,
         time_estimation=time_estimation,
