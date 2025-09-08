@@ -16,6 +16,7 @@ import os
 import bpy
 import boto3
 import asyncio
+from requests import Response  # requests is included in Blender 4.5
 from asyncio import AbstractEventLoop, Task
 import decimal
 from decimal import Decimal, InvalidOperation
@@ -27,7 +28,7 @@ from typing import Any
 from pathlib import PurePath
 from bpy.types import Context
 from . import download
-from ..utils import utils
+from ..utils import utils, rest_client
 from ..utils.models import Job, Image
 from ..utils.enums import Stage, ImageState, DownloadTrigger
 from ..utils.global_vars import rendergate_logger
@@ -87,7 +88,66 @@ def set_selected_render_job(context: Context, identifier: str) -> None:
     prefs.jobs = identifier
 
 
-def construct_render_job(job_data: dict, index: int) -> Job:
+def update_selected_job_timer(context: Context, job: Job) -> None:
+    """Updates the meta data / status of the currently selected render job."""
+
+    # check if we currently need to update, and we check pretty late here,
+    # because if we check earlier and the job changes from CALCULATING to UPLOADED,
+    # we can't catch the change to UPLOADED, because no update will be triggered
+    if job.stage not in [
+        Stage.INIT,
+        Stage.CALCULATING,
+        Stage.PAYING,
+        Stage.RENDERING,
+    ]:
+        return None
+
+    try:
+        loop: AbstractEventLoop = asyncio.get_event_loop()
+        task: Task = loop.create_task(update_selected_job(context, job))
+        bpy.app.timers.register(lambda: run_task_on_main_thread(task))
+    except Exception as e:
+        rendergate_logger.error(f"{e}")
+        return None
+
+    return 5.0
+
+
+async def update_selected_job(context: Context, job: Job) -> None:
+    """Requests the job details from rendergate."""
+
+    from ..properties.properties import RendergatePreferences, RendergateProperties
+
+    props: RendergateProperties = context.scene.rendergate_properties
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
+    # get rendergate jobs
+    response: Response | str = await rest_client.request(
+        url=f"{props.rendergate_api_url}/project/{job.identifier}",
+        headers={"auth": prefs.aws_token},
+        request_type="GET",
+    )
+
+    # error occured
+    if isinstance(response, str):
+        rendergate_logger.error(f"{response}")
+        return
+
+    response_json: dict = response.json()
+
+    if not isinstance(response_json, dict):
+        return
+
+    # update details
+    updated_job: Job = construct_render_job(response_json, job.number, True)
+    for job_attribute in updated_job.__dict__:
+
+        setattr(job, job_attribute, getattr(updated_job, job_attribute))
+
+
+def construct_render_job(
+    job_data: dict, index: int, from_update_api: bool = False
+) -> Job:
     """Create the Job dataclass from the response job dict."""
 
     job_id: str = job_data.get("id")
@@ -99,27 +159,36 @@ def construct_render_job(job_data: dict, index: int) -> Job:
     except KeyError:
         stage: Stage = Stage.UNKNOWN
 
-    # check if time and cost has been calculated yet, if not, stage is CALCULATED
-    if (
-        stage == Stage.UPLOADED
-        and job_data.get("costEst") is None
-        and job_data.get("timeEst") is None
-    ):
+    # check if time and cost has been calculated yet, if not, stage is CALCULATING
+    time_est_key: str = "timeEstimate" if from_update_api else "timeEst"
+    if stage == Stage.UPLOADED and job_data.get(time_est_key) is None:
         stage = Stage.CALCULATING
 
     progress: str = job_data.get("progress", "")
 
+    # API responses are not consitent for /project/{id} and /project
+    # so we need to make a distinction
+    estimation_dict: dict = progress if from_update_api else job_data
+
     # create decimals for the prices to not have floating point precision errors
     # and make sure we have enough precision to quantize
     decimal.getcontext().prec = 28
-    cost_estimation_number: float = job_data.get("costEst", 0.00)
+    if from_update_api:
+        cost_est_dict: dict = estimation_dict.get("cost", {})
+        cost_estimation_number: float = cost_est_dict.get("total", 0.00)
+    else:
+        cost_estimation_number: float = estimation_dict.get("costEst", 0.00)
     try:
         cost_estimation: Decimal = Decimal(f"{cost_estimation_number}")
         cost_estimation = cost_estimation.quantize(Decimal(".01"))
     except InvalidOperation:
         cost_estimation: Decimal = Decimal("0.00")
 
-    cost_number: float = job_data.get("cost", 0.0)
+    if from_update_api:
+        cost_est_dict: dict = estimation_dict.get("cost", {})
+        cost_number: float = cost_est_dict.get("current", 0.0)
+    else:
+        cost_number: float = estimation_dict.get("cost", 0.0)
     try:
         cost: Decimal = Decimal(f"{cost_number}")
         cost = cost.quantize(Decimal(".01"))
@@ -141,14 +210,22 @@ def construct_render_job(job_data: dict, index: int) -> Job:
     created_ago: str = humanize.naturaltime(date_time_local)
 
     # human readable time estimation
-    time_estimation: float = job_data.get("timeEst", 0.0)
+    if from_update_api:
+        time_est_dict: dict = estimation_dict.get("time", {})
+        time_estimation: float = time_est_dict.get("total", 0.0)
+    else:
+        time_estimation: float = estimation_dict.get("timeEst", 0.0)
     time_estimation_delta: timedelta = timedelta(milliseconds=time_estimation)
     time_estimation_human: str = humanize.precisedelta(
         time_estimation_delta, minimum_unit="minutes"
     )
 
     # human readable time
-    time: float = job_data.get("time", 0.0)
+    if from_update_api:
+        time_est_dict: dict = estimation_dict.get("time", {})
+        time: float = time_est_dict.get("current", 0.0)
+    else:
+        time: float = estimation_dict.get("time", 0.0)
     time_delta: timedelta = timedelta(milliseconds=time)
     time_human: str = humanize.precisedelta(time_delta, minimum_unit="minutes")
 
@@ -177,15 +254,59 @@ def construct_render_job(job_data: dict, index: int) -> Job:
     )
 
 
+def check_for_job_updates(context: Context) -> None:
+    """
+    Check if we should request rendergate frequently with a timer
+    for updates on its status.
+    """
+
+    from ..properties.properties import RendergatePreferences
+
+    try:
+        try:
+            bpy.app.timers.unregister(bpy.__rendergate_job_status_update)
+        except Exception:
+            pass
+
+        # only if logged in
+        prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+        if not prefs.aws_token:
+            return
+
+        selected_job: Job = get_selected_job(context)
+        if not selected_job:
+            return
+
+        # use a partial to have a reference of the function, using lambda doesn't work
+        update_job_status_partial: partial = partial(
+            update_selected_job_timer,
+            context=context,
+            job=selected_job,
+        )
+        # add timer that constantly checks for downloadable images
+        bpy.app.timers.register(update_job_status_partial)
+        # keep reference so we can unregister anytime anywhere
+        bpy.__rendergate_job_status_update = update_job_status_partial
+    except Exception as er:
+        rendergate_logger.error(f"{er}")
+
+
 def check_for_downloads(context: Context, trigger: DownloadTrigger) -> None:
     """
     Start a timer that frequently checks if we can download images and downloads them.
     """
 
+    from ..properties.properties import RendergatePreferences
+
     try:
         bpy.app.timers.unregister(bpy.__rendergate_download)
     except Exception:
         pass
+
+    # only if logged in
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+    if not prefs.aws_token:
+        return
 
     selected_job: Job = get_selected_job(context)
 
@@ -257,7 +378,7 @@ def download_images_timer(
     task: Task = loop.create_task(download_images(context, job))
     _previous_tasks.append(task)
 
-    bpy.app.timers.register(lambda: check_download_task(task))
+    bpy.app.timers.register(lambda: run_task_on_main_thread(task))
 
     return 60.0
 
@@ -343,7 +464,7 @@ async def download_images(context: Context, job: Job):
             rendergate_logger.info(f"Downloaded image {file_name}.")
 
 
-def check_download_task(task: Task):
+def run_task_on_main_thread(task: Task):
     """Runs the task as a timer on the blender main thread."""
 
     # let the event loop process pending tasks

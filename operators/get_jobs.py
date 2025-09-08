@@ -71,7 +71,7 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
 
     @catch_exception(_cleanup)
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
-        """Upload this blend-file and create a new render job."""
+        """Gets rendergate jobs."""
 
         try:
             props: RendergateProperties = context.scene.rendergate_properties
@@ -96,11 +96,11 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
         except:
             pass
 
-        no_jobs: bool = True if not jobs.get_jobs() else False
+        no_jobs_before: bool = True if not jobs.get_jobs() else False
 
         headers: dict = {"auth": prefs.aws_token}
 
-        # create rendergate job/project
+        # get rendergate jobs
         response: Response | str = await rest_client.request(
             url=f"{props.rendergate_api_url}/project",
             headers=headers,
@@ -148,7 +148,7 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
 
         # set last job, but only if there where no jobs before,
         # otherwise we want to still have the job that was selected before
-        if no_jobs:
+        if len(jobs.get_jobs()) > 0 and no_jobs_before:
             jobs.set_selected_render_job(
                 context, jobs.get_jobs()[len(jobs.get_jobs()) - 1].identifier
             )

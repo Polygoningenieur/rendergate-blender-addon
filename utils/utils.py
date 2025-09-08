@@ -45,7 +45,7 @@ def catch_exception(callback: Callable):
                 return await func(*args, **kwargs)
             except Exception as e:
                 rendergate_logger.error(
-                    f"Exception in async operator {func}:\n{repr(e)}"
+                    f"Exception in async operator {func}:\n{traceback.format_exc()}"
                 )
                 # get the context from the bpy operator function
                 context: Context = None
@@ -145,3 +145,16 @@ async def progress(
         pass
 
     await asyncio.sleep(sleep)
+
+
+def remove_timers():
+    """Removes all timers from addon."""
+
+    try:
+        bpy.app.timers.unregister(bpy.__rendergate_job_status_update)
+    except Exception:
+        pass
+    try:
+        bpy.app.timers.unregister(bpy.__rendergate_download)
+    except Exception:
+        pass

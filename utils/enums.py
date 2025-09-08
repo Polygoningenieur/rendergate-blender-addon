@@ -18,16 +18,16 @@ from enum import StrEnum
 class Stage(StrEnum):
     """Rendergate stage values."""
 
-    INIT = "Initializing"
+    INIT = "Initializing..."
     # CALCULATING doesn't exist on rendergate (yet),
     # it is just UPLOADED without timeEst & costEst
-    CALCULATING = "Calculating"
+    CALCULATING = "Calculating..."
     UPLOADED = "Uploaded"
-    PAYING = "Paying"
-    RENDERING = "Rendering"
+    PAYING = "Paying..."
+    RENDERING = "Rendering..."
     FINISHED = "Finished"
     CRASHED = "Crashed"
-    UNKNOWN = "Unknown Job Stage"
+    UNKNOWN = "Unknown Job Status"
 
 
 class ImageState(StrEnum):

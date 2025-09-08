@@ -60,6 +60,7 @@ def update_selected_job(self, context: Context) -> None:
     """Check for downloads, letting it know what property was changed."""
 
     jobs.check_for_downloads(context, DownloadTrigger.JOB)
+    jobs.check_for_job_updates(context)
 
 
 def update_download_folder(self, context: Context) -> None:
