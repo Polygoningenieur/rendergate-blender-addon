@@ -16,7 +16,7 @@ __all__ = ["get_download_content", "download_image"]
 
 import boto3
 import asyncio
-from pathlib import PurePath
+from pathlib import PurePath, Path
 from functools import partial
 from requests import Response  # requests is included in Blender 4.5
 from asyncio import AbstractEventLoop
@@ -59,7 +59,9 @@ async def _set_client(context: Context) -> None:
                     _s3_client = None
                     return
                 else:
-                    rendergate_logger.info(f"New credentials: {_credentials}")
+                    rendergate_logger.info(
+                        f"New credentials: {str(_credentials)[:100]}..."
+                    )
 
             # create s3 client
             _s3_client = boto3.client(
@@ -72,7 +74,7 @@ async def _set_client(context: Context) -> None:
         rendergate_logger.error(f"{err}")
 
 
-async def _get_download_credentials(context: Context) -> S3Credentials:
+async def _get_download_credentials(context: Context) -> S3Credentials | None:
     """Get the download credentials from AWS."""
 
     global _credentials
@@ -83,6 +85,8 @@ async def _get_download_credentials(context: Context) -> S3Credentials:
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
     selected_job: Job = jobs.get_selected_job(context)
+    if selected_job is None:
+        raise CredentialsError(f"No job selected.")
 
     # download render job
     response: Response | str = await rest_client.request(
@@ -149,8 +153,13 @@ async def get_download_content(context: Context) -> list:
     return s3_response.get("Contents", [])
 
 
-async def download_image(key: str, file_path: PurePath):
+async def download_image(key: str, file_dir: PurePath, file_name: str):
     """Downloads a file to the specified file_path."""
+
+    # make sure file path exists
+    Path(file_dir).mkdir(parents=True, exist_ok=True)
+
+    file_path: PurePath = PurePath(file_dir / file_name)
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
 

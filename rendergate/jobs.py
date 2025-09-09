@@ -178,7 +178,6 @@ def construct_render_job(
     else:
         progress_amount: float = job_data.get("progress", 0.0)
 
-    rendergate_logger.info(f"PROGRESS: {progress_amount}")
     # API responses are not consitent for /project/{id} and /project
     # so we need to make a distinction
     estimation_dict: dict = progress if from_update_api else job_data
@@ -418,6 +417,10 @@ async def download_images(context: Context, job: Job):
     # we still download to the same initial folder
     download_folder: PurePath = PurePath(bpy.path.abspath(prefs.download_folder))
 
+    selected_job: Job = get_selected_job(context)
+    if selected_job is None:
+        return
+
     # get list of downloadable images
     contents: list[dict[str, Any]] | None = await download.get_download_content(context)
     if contents is None:
@@ -433,7 +436,8 @@ async def download_images(context: Context, job: Job):
 
         # download to specified folder
         file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
-        file_path: PurePath = PurePath(download_folder / file_name)
+        file_dir: PurePath = PurePath(download_folder / selected_job.name)
+        file_path: PurePath = PurePath(file_dir / file_name)
 
         # get the current image from the job
         image: Image = next((i for i in job.images if i.file_path == file_path), None)
@@ -468,7 +472,7 @@ async def download_images(context: Context, job: Job):
         # download image
         image.state = ImageState.DOWNLOADING
         try:
-            await download.download_image(key, file_path)
+            await download.download_image(key, file_dir, file_name)
         except FileNotFoundError as e:
             image.state = ImageState.DIRNOTFOUND
             rendergate_logger.info(f"Image {file_name} could not be downlaoded: {e}")

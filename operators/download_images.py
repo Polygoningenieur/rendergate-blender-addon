@@ -114,6 +114,14 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         props.download_images_progress_text = "10% - Downloading..."
         await progress(props, "download_images_progress", progress_start, context)
 
+        selected_job: Job = jobs.get_selected_job(context)
+        if selected_job is None:
+            await progress(props, "download_images_progress", 1.0, context)
+            self.report({"INFO"}, f"No job selected")
+            self._cleanup(context)
+            self.quit()
+            return
+
         # get list of downloadable images
         contents: list[dict[str, Any]] | None = await download.get_download_content(
             context
@@ -137,6 +145,8 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
         props.download_images_progress_text = "20% - Downloading..."
         await progress(props, "download_images_progress", 0.2, context)
 
+        abort_message: str = ""
+
         # download images
         current_progress: float = 0.2
         progress_steps: float = (progress_end - current_progress) / len(contents)
@@ -147,12 +157,14 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
 
             # download to specified folder
             file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
-            file_path: PurePath = PurePath(download_folder / file_name)
+            file_dir: PurePath = PurePath(download_folder / selected_job.name)
+            file_path: PurePath = PurePath(file_dir / file_name)
 
             try:
-                await download.download_image(key, file_path)
+                await download.download_image(key, file_dir, file_name)
             except FileNotFoundError:
-                continue
+                abort_message = f"No such folder to download to ({file_path})."
+                break
 
             current_progress += progress_steps
             download_percentage: int = round(current_progress * 100)
@@ -165,15 +177,26 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
                 f"{download_percentage}% - Downloaded image to {file_path}"
             )
 
-        # finished
-        props.download_images_progress_text = "100% - Downloaded"
+        # no break encountered
+        else:
+            # finished
+            props.download_images_progress_text = "100% - Downloaded"
+            await progress(
+                props, "download_images_progress", progress_end, context, sleep=1
+            )
+            await progress(props, "download_images_progress", 1.0, context)
+            self._cleanup(context)
+            self.report({"INFO"}, "Images downloaded.")
+            self.quit()
+            return
+
+        # break encountered
+        props.download_images_progress_text = "100% - Aborted"
         await progress(
             props, "download_images_progress", progress_end, context, sleep=1
         )
         await progress(props, "download_images_progress", 1.0, context)
-
         self._cleanup(context)
-
-        self.report({"INFO"}, "Images downloaded.")
+        self.report({"INFO"}, f"Download aborted. {abort_message}")
         self.quit()
         return
