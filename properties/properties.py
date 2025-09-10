@@ -211,3 +211,15 @@ class RendergatePreferences(AddonPreferences):
         update=property_updates.update_auto_download,
         default=True,
     )
+
+
+@class_to_register
+class JobProperties(PropertyGroup):
+
+    # unique id, corresponds with id in Job model
+    identifier: StringProperty()
+
+    active_download: BoolProperty(
+        name="Auto-Download",
+        default=False,
+    )

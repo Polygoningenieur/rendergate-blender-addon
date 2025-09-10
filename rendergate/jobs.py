@@ -14,7 +14,6 @@
 
 import os
 import bpy
-import boto3
 import asyncio
 from requests import Response  # requests is included in Blender 4.5
 from asyncio import AbstractEventLoop, Task
@@ -86,6 +85,19 @@ def set_selected_render_job(context: Context, identifier: str) -> None:
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
     prefs.jobs = identifier
+
+
+def get_properties(context: Context, job: Job) -> Any | None:
+    """Get the bpy properties of the job, returns JobProperties."""
+
+    from ..properties.properties import JobProperties
+
+    all_jobs_props: set[JobProperties] = context.scene.rendergate_jobs
+
+    try:
+        return next((j for j in all_jobs_props if job.identifier == j.identifier), None)
+    except IndexError:
+        return None
 
 
 def update_selected_job_timer(context: Context, job: Job) -> None:
@@ -244,6 +256,14 @@ def construct_render_job(
     description: str = (
         f"Job {index}\nCreated: {created_ago}\nProject: {project_name}\nStage: {stage}\nProgress: {progress_amount}\nCost Estimation: ${cost_estimation}\nCost: {cost}\nTime Estimation: {time_estimation_human}\nTime: {time_human}"
     )
+
+    # create corresponding bpy properties job
+    from ..properties.properties import JobProperties
+
+    all_jobs_props: set[JobProperties] = bpy.context.scene.rendergate_jobs
+    new_job_props: JobProperties = all_jobs_props.add()
+    new_job_props.identifier = job_id
+    new_job_props.active_download = False
 
     return Job(
         identifier=job_id,

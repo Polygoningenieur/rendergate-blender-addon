@@ -15,13 +15,13 @@
 import os
 from bpy.utils import register_class, unregister_class, previews
 from bpy.types import Scene
-from bpy.props import PointerProperty
+from bpy.props import PointerProperty, CollectionProperty
 
 # necessary to import modules so they can get registered
 from . import properties, utils, panels, operators
 
 from .utils.utils import classes_to_register, remove_timers
-from .properties.properties import RendergateProperties
+from .properties.properties import RendergateProperties, JobProperties
 from .utils.async_loop import setup_asyncio_executor
 from .utils.global_vars import rendergate_images
 
@@ -30,7 +30,7 @@ bl_info = {
     "author": "Polygoningenieur Gustav Hahn",
     "description": "Allows you to render in the cloud with Rendergate.ch",
     "blender": (4, 4, 0),
-    "version": (0, 1, 40),
+    "version": (0, 1, 41),
     "location": "Properties -> Render",
     "warning": "",
     "doc_url": "https://github.com/Polygoningenieur/rendergate-blender-addon",
@@ -49,6 +49,7 @@ def register() -> None:
         register_class(c)
 
     Scene.rendergate_properties = PointerProperty(type=RendergateProperties)
+    Scene.rendergate_jobs = CollectionProperty(type=JobProperties)
 
     # Note that preview collections returned by bpy.utils.previews
     # are regular py objects - you can use them to store custom data.
@@ -71,6 +72,8 @@ def unregister() -> None:
     """Unregister addon classes."""
 
     del Scene.rendergate_properties
+    del Scene.rendergate_jobs
+
     for c in reversed(classes_to_register):
         if c.is_registered:
             unregister_class(c)

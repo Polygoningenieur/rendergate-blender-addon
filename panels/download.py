@@ -21,7 +21,11 @@ from ..utils.utils import class_to_register
 from ..utils.models import Job
 from ..utils.enums import ImageState
 from ..rendergate import jobs
-from ..properties.properties import RendergateProperties, RendergatePreferences
+from ..properties.properties import (
+    RendergateProperties,
+    RendergatePreferences,
+    JobProperties,
+)
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render
 from ..operators.download_images import RENDERGATE_OT_download_images
@@ -52,11 +56,26 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
         (job name, progress, pause/resume/cancel download).
         """
 
-        props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+        props: RendergateProperties = context.scene.rendergate_properties
+        all_jobs_props: set[JobProperties] = context.scene.rendergate_jobs
+        all_jobs: list[Job] = jobs.get_jobs()
 
         layout: UILayout = self.layout
         layout.use_property_split = False
         layout.use_property_decorate = False
 
         container: UILayout = layout.column(align=True)
+
+        for job_props in all_jobs_props:
+            try:
+                job: Job = next(
+                    (j for j in all_jobs if j.identifier == job_props.identifier)
+                )
+            except (StopIteration, IndexError):
+                continue
+
+            if not job_props.active_download:
+                continue
+
+            container.label(text=str(job.name))

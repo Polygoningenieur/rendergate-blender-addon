@@ -21,7 +21,11 @@ from ..utils.utils import class_to_register
 from ..utils.models import Job
 from ..utils.enums import ImageState
 from ..rendergate import jobs
-from ..properties.properties import RendergateProperties, RendergatePreferences
+from ..properties.properties import (
+    RendergateProperties,
+    RendergatePreferences,
+    JobProperties,
+)
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render
 from ..operators.download_images import RENDERGATE_OT_download_images
@@ -53,8 +57,9 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
         Show UI for rendergate jobs list, and buttons to render/download job.
         """
 
-        props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+        props: RendergateProperties = context.scene.rendergate_properties
+        all_jobs_props: set[JobProperties] = context.scene.rendergate_jobs
 
         layout: UILayout = self.layout
         layout.use_property_split = False
@@ -78,9 +83,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             # TODO display preview image
             # job_details.label(text=f"preview: {selected_job.preview_link}")
             # job_details.label(text=f"project_name: {selected_job.project_name}")
-            job_details.label(
-                text=f"{selected_job.stage}", icon="SEQ_STRIP_DUPLICATE"
-            )
+            job_details.label(text=f"{selected_job.stage}", icon="SEQ_STRIP_DUPLICATE")
             if selected_job.cost_estimation > Decimal("0.00"):
                 job_details.label(
                     text=f"Cost Estimation: ${selected_job.cost_estimation}",
@@ -106,9 +109,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                 progress: int = 0.0
             else:
                 progress: int = int(selected_job.progress * 100)
-            job_details.label(
-                text=f"Progress: {progress}%", icon="SORTSIZE"
-            )
+            job_details.label(text=f"Progress: {progress}%", icon="SORTSIZE")
 
             downloaded_images: int = 0
             loading_images: int = 0
@@ -138,6 +139,10 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                 images_text += f" Errors with {erroneous_images} images"
             if downloaded_images > 0 or loading_images > 0 or erroneous_images > 0:
                 job_details.label(text=images_text, icon="NODE_COMPOSITING")
+
+            # checkbox to say if job should be downloaded or not
+            job_props: JobProperties = jobs.get_properties(context, selected_job)
+            job_details.prop(job_props, "active_download")
 
         buttons: UILayout = layout.split()
 
