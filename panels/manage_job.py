@@ -109,7 +109,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                 progress: int = 0.0
             else:
                 progress: int = int(selected_job.progress * 100)
-            job_details.label(text=f"Progress: {progress}%", icon="SORTSIZE")
+            job_details.label(text=f"Render Progress: {progress}%", icon="SORTSIZE")
 
             downloaded_images: int = 0
             loading_images: int = 0

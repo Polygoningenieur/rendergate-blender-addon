@@ -47,6 +47,7 @@ class Job:
     time_human: str
     preview_link: str
     images: list[Image]
+    frames: int
 
     def __eq__(self, other: str):
         return self.identifier == other

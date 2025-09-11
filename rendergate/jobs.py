@@ -103,17 +103,6 @@ def get_properties(context: Context, job: Job) -> Any | None:
 def update_selected_job_timer(context: Context, job: Job) -> None:
     """Updates the meta data / status of the currently selected render job."""
 
-    # check if we currently need to update, and we check pretty late here,
-    # because if we check earlier and the job changes from CALCULATING to UPLOADED,
-    # we can't catch the change to UPLOADED, because no update will be triggered
-    if job.stage not in [
-        Stage.INIT,
-        Stage.CALCULATING,
-        Stage.PAYING,
-        Stage.RENDERING,
-    ]:
-        return None
-
     try:
         loop: AbstractEventLoop = asyncio.get_event_loop()
         task: Task = loop.create_task(update_selected_job(context, job))
@@ -122,7 +111,16 @@ def update_selected_job_timer(context: Context, job: Job) -> None:
         rendergate_logger.error(f"{e}")
         return None
 
-    return 5.0
+    # periodically update the job if we expect changes, otherwise only update once
+    if job.stage not in [
+        Stage.INIT,
+        Stage.CALCULATING,
+        Stage.PAYING,
+        Stage.RENDERING,
+    ]:
+        return 5.0
+    else:
+        return None
 
 
 async def update_selected_job(context: Context, job: Job) -> None:
@@ -177,12 +175,13 @@ def construct_render_job(
         stage = Stage.CALCULATING
 
     progress: float | dict = job_data.get("progress", "")
+    num_frames: int = 0
     if from_update_api:
         progress_amount_dict: float = progress.get("progress", {})
         file_settings: dict = job_data.get("fileSettings", {})
         start_frame: int = file_settings.get("start", 1)
         stop_frame: int = file_settings.get("end", 1)
-        num_frames: int = stop_frame - start_frame + 1
+        num_frames = stop_frame - start_frame + 1
         if num_frames <= 0:
             progress_amount: float = 0.0
         else:
@@ -283,6 +282,7 @@ def construct_render_job(
         time_human=time_human,
         preview_link=preview,
         images=[],
+        frames=num_frames,
     )
 
 

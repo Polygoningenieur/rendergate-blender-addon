@@ -13,24 +13,16 @@
 
 
 import bpy
-from decimal import Decimal
-from pathlib import PurePath
 from bpy.types import Panel, Context, UILayout
 from .panel import RendergatePanel
 from ..utils.utils import class_to_register
 from ..utils.models import Job
-from ..utils.enums import ImageState
 from ..rendergate import jobs
 from ..properties.properties import (
     RendergateProperties,
     RendergatePreferences,
     JobProperties,
 )
-from ..operators.get_jobs import RENDERGATE_OT_get_jobs
-from ..operators.render import RENDERGATE_OT_invoke_render
-from ..operators.download_images import RENDERGATE_OT_download_images
-from ..operators.open_folder import RENDERGATE_OT_open_folder
-from ..operators.open_website import RENDERGATE_OT_open_website
 
 
 @class_to_register
@@ -53,7 +45,7 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
     def draw(self, context: Context):
         """
         Show UI for all active downloads
-        (job name, progress, pause/resume/cancel download).
+        (job name, progress, pause/resume/cancel download, open folder).
         """
 
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
@@ -65,7 +57,9 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
         layout.use_property_split = False
         layout.use_property_decorate = False
 
-        container: UILayout = layout.column(align=True)
+        split: UILayout = layout.split(factor=1 / 3)
+        left: UILayout = split.column(align=True)
+        right: UILayout = split.column(align=True)
 
         for job_props in all_jobs_props:
             try:
@@ -78,4 +72,5 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
             if not job_props.active_download:
                 continue
 
-            container.label(text=str(job.name))
+            left.label(text=str(job.name))
+            right.label(text=f"{len(job.images)}/{job.frames}")
