@@ -201,14 +201,12 @@ class RendergatePreferences(AddonPreferences):
         name="Download Folder",
         description="The folder where rendered results from Rendergate.ch will be stored in",
         subtype="DIR_PATH",
-        update=property_updates.update_download_folder,
         default="",
     )
 
     auto_download: BoolProperty(
         name="Auto-Download Rendered Images",
         description="Automatically downloads the rendered images of the selected job into the specified download folder",
-        update=property_updates.update_auto_download,
         default=True,
     )
 

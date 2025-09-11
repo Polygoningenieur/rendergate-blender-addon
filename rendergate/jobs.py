@@ -106,7 +106,7 @@ def update_selected_job_timer(context: Context, job: Job) -> None:
     try:
         loop: AbstractEventLoop = asyncio.get_event_loop()
         task: Task = loop.create_task(update_selected_job(context, job))
-        bpy.app.timers.register(lambda: run_task_on_main_thread(task))
+        bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
     except Exception as e:
         rendergate_logger.error(f"{e}")
         return None
@@ -325,7 +325,8 @@ def check_for_job_updates(context: Context) -> None:
 
 def check_for_downloads(context: Context, trigger: DownloadTrigger) -> None:
     """
-    Start a timer that frequently checks if we can download images and downloads them.
+    Start a timer that frequently checks if the selected job
+    has downloadable images and downloads them.
     """
 
     from ..properties.properties import RendergatePreferences
@@ -410,7 +411,7 @@ def download_images_timer(
     task: Task = loop.create_task(download_images(context, job))
     _previous_tasks.append(task)
 
-    bpy.app.timers.register(lambda: run_task_on_main_thread(task))
+    bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
 
     return 60.0
 
@@ -437,10 +438,6 @@ async def download_images(context: Context, job: Job):
     # we still download to the same initial folder
     download_folder: PurePath = PurePath(bpy.path.abspath(prefs.download_folder))
 
-    selected_job: Job = get_selected_job(context)
-    if selected_job is None:
-        return
-
     # get list of downloadable images
     contents: list[dict[str, Any]] | None = await download.get_download_content(context)
     if contents is None:
@@ -456,7 +453,7 @@ async def download_images(context: Context, job: Job):
 
         # download to specified folder
         file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
-        file_dir: PurePath = PurePath(download_folder / selected_job.name)
+        file_dir: PurePath = PurePath(download_folder / job.name)
         file_path: PurePath = PurePath(file_dir / file_name)
 
         # get the current image from the job
@@ -492,26 +489,10 @@ async def download_images(context: Context, job: Job):
         # download image
         image.state = ImageState.DOWNLOADING
         try:
-            await download.download_image(key, file_dir, file_name)
+            await download.s3_download_file(key, file_dir, file_name)
         except FileNotFoundError as e:
             image.state = ImageState.DIRNOTFOUND
             rendergate_logger.info(f"Image {file_name} could not be downlaoded: {e}")
         else:
             image.state = ImageState.DOWNLOADED
             rendergate_logger.info(f"Downloaded image {file_name}.")
-
-
-def run_task_on_main_thread(task: Task):
-    """Runs the task as a timer on the blender main thread."""
-
-    # let the event loop process pending tasks
-    loop: AbstractEventLoop = asyncio.get_event_loop()
-    loop.call_soon(loop.stop)
-    loop.run_forever()
-
-    utils.update_ui()
-
-    if task.cancelling() or task.cancelled() or task.done():
-        return None
-    else:
-        return 0.1

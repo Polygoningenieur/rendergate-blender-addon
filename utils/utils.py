@@ -15,6 +15,7 @@
 import os
 import bpy
 import asyncio
+from asyncio import AbstractEventLoop, Task
 import traceback
 from typing import Any, Callable
 from functools import wraps
@@ -158,3 +159,23 @@ def remove_timers():
         bpy.app.timers.unregister(bpy.__rendergate_download)
     except Exception:
         pass
+    try:
+        bpy.app.timers.unregister(bpy.__rendergate_downloads)
+    except Exception:
+        pass
+
+
+def run_task_on_main_thread(task: Task):
+    """Runs the task as a timer on the blender main thread."""
+
+    # let the event loop process pending tasks
+    loop: AbstractEventLoop = asyncio.get_event_loop()
+    loop.call_soon(loop.stop)
+    loop.run_forever()
+
+    update_ui()
+
+    if task.cancelling() or task.cancelled() or task.done():
+        return None
+    else:
+        return 0.1

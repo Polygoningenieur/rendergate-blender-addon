@@ -11,23 +11,26 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-__all__ = ["get_download_content", "download_image"]
+__all__ = ["get_download_content", "s3_download_file"]
 
 
+import bpy
 import boto3
 import asyncio
 from pathlib import PurePath, Path
 from functools import partial
 from requests import Response  # requests is included in Blender 4.5
-from asyncio import AbstractEventLoop
+from asyncio import AbstractEventLoop, Task
+from bpy.app.handlers import persistent
 from bpy.types import Context
 from json.decoder import JSONDecodeError
 from botocore import exceptions
 from dataclasses import asdict
 from . import jobs
-from ..utils import rest_client
+from ..utils import utils, rest_client
 from ..utils.models import Job, S3Credentials
 from ..utils.global_vars import rendergate_logger
+from ..utils.enums import Stage
 
 
 _s3_client = None
@@ -36,6 +39,55 @@ _credentials: S3Credentials | None = None
 
 class CredentialsError(Exception):
     pass
+
+
+@persistent
+def load_handler(_):
+    """On file load, add a timer that periodically checks for downloads."""
+
+
+    try:
+        bpy.app.timers.unregister(bpy.__rendergate_downloads)
+    except Exception:
+        pass
+
+    try:
+        # add timer that constantly checks for downloadable images
+        bpy.app.timers.register(check_for_downloads)
+    except Exception as e:
+        rendergate_logger.error(f"Could not register download timer: {e}")
+
+    # keep reference so we can unregister anytime anywhere
+    bpy.__rendergate_downloads = check_for_downloads
+
+
+def check_for_downloads() -> None:
+    """
+    Timer that periodically checks all jobs with active downloads
+    and downloads images if there are any.
+    """
+
+    from ..properties.properties import RendergatePreferences, JobProperties
+
+    frequency: float = 5.0
+
+    loop: AbstractEventLoop = asyncio.get_event_loop()
+    prefs: RendergatePreferences = RendergatePreferences.preferences()
+    all_jobs: list[Job] = jobs.get_jobs()
+
+    if not prefs.aws_token:
+        return frequency
+
+    for job in all_jobs:
+        job_props: JobProperties = jobs.get_properties(bpy.context, job)
+        if job_props is None:
+            continue
+        # download images if they are down or currently rendering
+        if job.stage in [Stage.FINISHED, Stage.RENDERING] and job_props.active_download:
+            task: Task = loop.create_task(jobs.download_images(bpy.context, job))
+            bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
+
+    return frequency
 
 
 async def _set_client(context: Context) -> None:
@@ -153,7 +205,7 @@ async def get_download_content(context: Context) -> list:
     return s3_response.get("Contents", [])
 
 
-async def download_image(key: str, file_dir: PurePath, file_name: str):
+async def s3_download_file(key: str, file_dir: PurePath, file_name: str):
     """Downloads a file to the specified file_path."""
 
     # make sure file path exists

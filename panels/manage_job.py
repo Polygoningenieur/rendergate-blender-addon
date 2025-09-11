@@ -142,7 +142,8 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
 
             # checkbox to say if job should be downloaded or not
             job_props: JobProperties = jobs.get_properties(context, selected_job)
-            job_details.prop(job_props, "active_download")
+            if job_props is not None:
+                job_details.prop(job_props, "active_download")
 
         buttons: UILayout = layout.split()
 
