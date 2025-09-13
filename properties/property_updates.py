@@ -59,4 +59,31 @@ def create_job_list(self, context: Context):
 def update_selected_job(self, context: Context) -> None:
     """Check for downloads, letting it know what property was changed."""
 
+    from ..properties.properties import RendergatePreferences
+
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
     jobs.check_for_job_updates(context)
+
+    # set the unified active download property to the value that is set for this job
+    selected_job: Job = jobs.get_selected_job(context)
+    if selected_job is not None:
+        prefs.active_download = selected_job.active_download
+
+
+def update_active_download(self, context: Context) -> None:
+    """
+    Update the bool flag active download for the currently selected job.
+    We have a unified bool flag for all jobs, and determine which one is toggled
+    by which one is selected. We do this because we don't have a PropertyGroupd
+    for each job, because changing values of a PropertyGroup changes the file,
+    which then the user would need to save again before creating a new job.
+    """
+
+    from ..properties.properties import RendergatePreferences
+
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
+    selected_job: Job = jobs.get_selected_job(context)
+    if selected_job is not None:
+        selected_job.active_download = prefs.active_download

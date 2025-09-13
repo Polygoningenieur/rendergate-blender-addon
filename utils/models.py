@@ -49,6 +49,7 @@ class Job:
     time_human: str
     preview_link: str
     images: list[Image]
+    active_download: bool
     frames: int
 
     def __eq__(self, other: str):

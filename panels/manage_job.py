@@ -19,11 +19,7 @@ from .panel import RendergatePanel
 from ..utils.utils import class_to_register
 from ..utils.models import Job
 from ..rendergate import jobs
-from ..properties.properties import (
-    RendergateProperties,
-    RendergatePreferences,
-    JobProperties,
-)
+from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render
 from ..operators.open_website import RENDERGATE_OT_open_website
@@ -55,7 +51,6 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
 
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
         props: RendergateProperties = context.scene.rendergate_properties
-        all_jobs_props: set[JobProperties] = context.scene.rendergate_jobs
 
         layout: UILayout = self.layout
         layout.use_property_split = False
@@ -110,9 +105,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
             job_details.label(text=f"Render Progress: {progress}%", icon="SORTSIZE")
 
             # checkbox to say if job should be downloaded or not
-            job_props: JobProperties = jobs.get_properties(context, selected_job)
-            if job_props is not None:
-                job_details.prop(job_props, "active_download")
+            job_details.prop(prefs, "active_download", text="Download")
 
         buttons: UILayout = layout.split()
 

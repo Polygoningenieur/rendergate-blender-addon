@@ -204,14 +204,9 @@ class RendergatePreferences(AddonPreferences):
         default="",
     )
 
-
-@class_to_register
-class JobProperties(PropertyGroup):
-
-    # unique id, corresponds with id in Job model
-    identifier: StringProperty()
-
     active_download: BoolProperty(
-        name=" Download",
+        name="Download",
+        description="If the job should automatically download rendered images once they are done rendering",
         default=False,
+        update=property_updates.update_active_download,
     )

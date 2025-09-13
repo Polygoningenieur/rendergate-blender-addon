@@ -61,23 +61,10 @@ def add_job(job_data: dict, index: int) -> Job:
     """Add a rendergate render job."""
 
     new_job: Job = construct_render_job(job_data, index)
-    _add_job_properties(new_job)
 
     _jobs.append(new_job)
 
     return new_job
-
-
-def _add_job_properties(job: Job):
-    """Adds the corresponding bpy properties for this job."""
-
-    from ..properties.properties import JobProperties
-
-    all_jobs_props: set[JobProperties] = bpy.context.scene.rendergate_jobs
-
-    new_job_props: JobProperties = all_jobs_props.add()
-    new_job_props.identifier = job.identifier
-    new_job_props.active_download = False
 
 
 def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
@@ -88,8 +75,9 @@ def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
     except (StopIteration, IndexError):
         return None
 
-    # temporary save images list
+    # temporary save some attributes
     images: list[Image] = job.images
+    active_download: bool = job.active_download
 
     updated_job: Job = construct_render_job(job_data, index)
     # update attributes of the existing job object
@@ -98,9 +86,9 @@ def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
 
     # new index
     job.number = index
-
     # keep list of images from original job
     job.images = images
+    job.active_download = active_download
 
     return job
 
@@ -139,19 +127,6 @@ def set_selected_render_job(context: Context, identifier: str) -> None:
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
     prefs.jobs = identifier
-
-
-def get_properties(context: Context, job: Job) -> Any | None:
-    """Get the bpy properties of the job, returns JobProperties."""
-
-    from ..properties.properties import JobProperties
-
-    all_jobs_props: set[JobProperties] = context.scene.rendergate_jobs
-
-    try:
-        return next((j for j in all_jobs_props if job.identifier == j.identifier), None)
-    except IndexError:
-        return None
 
 
 def update_selected_job_timer(context: Context, job: Job) -> None:
@@ -202,11 +177,19 @@ async def update_selected_job(context: Context, job: Job) -> None:
     if not isinstance(response_json, dict):
         return
 
+    # temporary save some attributes
+    images: list[Image] = job.images
+    active_download: bool = job.active_download
+
     # update details
     updated_job: Job = construct_render_job(response_json, job.number, True)
     for job_attribute in updated_job.__dict__:
 
         setattr(job, job_attribute, getattr(updated_job, job_attribute))
+
+    # set attributes that are independent from API job
+    job.images = images
+    job.active_download = active_download
 
 
 def construct_render_job(
@@ -335,6 +318,7 @@ def construct_render_job(
         time_human=time_human,
         preview_link=preview,
         images=[],
+        active_download=False,
         frames=num_frames,
     )
 

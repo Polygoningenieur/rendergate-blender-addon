@@ -69,7 +69,8 @@ def _check_for_downloads() -> None:
     and downloads images if there are any.
     """
 
-    from ..properties.properties import RendergatePreferences, JobProperties
+    from ..properties.properties import RendergatePreferences
+
 
     # TODO increase frequency
     frequency: float = 5.0
@@ -81,11 +82,8 @@ def _check_for_downloads() -> None:
         return frequency
 
     for job in jobs.get_all():
-        job_props: JobProperties = jobs.get_properties(bpy.context, job)
-        if job_props is None:
-            continue
         # download images if the job is done or currently rendering
-        if job.stage in [Stage.FINISHED, Stage.RENDERING] and job_props.active_download:
+        if job.stage in [Stage.FINISHED, Stage.RENDERING] and job.active_download:
             task: Task = loop.create_task(_download_images(bpy.context, job))
             bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
 

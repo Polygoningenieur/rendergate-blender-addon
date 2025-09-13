@@ -21,11 +21,7 @@ from ..rendergate import jobs
 from ..utils.models import Image
 from ..utils.enums import ImageState
 from ..operators.open_folder import RENDERGATE_OT_open_folder
-from ..properties.properties import (
-    RendergateProperties,
-    RendergatePreferences,
-    JobProperties,
-)
+from ..properties.properties import RendergatePreferences
 
 
 @class_to_register
@@ -52,9 +48,6 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
         """
 
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-        props: RendergateProperties = context.scene.rendergate_properties
-        all_jobs_props: set[JobProperties] = context.scene.rendergate_jobs
-        all_jobs: list[Job] = jobs.get_all()
 
         layout: UILayout = self.layout
         layout.use_property_split = False
@@ -79,15 +72,8 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
         left: UILayout = split.column(align=True)
         right: UILayout = split.column(align=True)
 
-        for job_props in all_jobs_props:
-            try:
-                job: Job = next(
-                    (j for j in all_jobs if j.identifier == job_props.identifier)
-                )
-            except (StopIteration, IndexError):
-                continue
-
-            if not job_props.active_download:
+        for job in jobs.get_all():
+            if not job.active_download:
                 continue
 
             downloaded_images: list[Image] = [
