@@ -71,11 +71,12 @@ def check_for_downloads() -> None:
 
     from ..properties.properties import RendergatePreferences, JobProperties
 
+    # TODO increase frequency
     frequency: float = 5.0
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences()
-    all_jobs: list[Job] = jobs.get_jobs()
+    all_jobs: list[Job] = jobs.get_all()
 
     if not prefs.aws_token:
         return frequency

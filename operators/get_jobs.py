@@ -96,7 +96,7 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
         except:
             pass
 
-        no_jobs_before: bool = True if not jobs.get_jobs() else False
+        no_jobs_before: bool = True if not jobs.get_all() else False
 
         headers: dict = {"auth": prefs.aws_token}
 
@@ -135,22 +135,33 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
                 self.quit()
             return
 
-        # clear jobs before adding the updated ones
-        jobs.clear()
+        jobs.untouch_all()
 
         for index, job_data in enumerate(response_json):
             if not isinstance(job_data, dict):
                 continue
-            if job_data.get("id") is None:
+
+            identifier: str = job_data.get("id")
+            if identifier is None:
                 continue
-            # add new job to list
-            new_job: Job = jobs.add_job(jobs.construct_render_job(job_data, index))
+
+            # if job identifier exists job gets updated
+            updated_job: Job = jobs.update_job(job_data, index, identifier)
+
+            # job is new
+            if updated_job is None:
+                jobs.add_job(job_data, index)
+
+        # TODO randomly delete jobs for testing
+        # delete all untouched jobs -> they don't exist anymore
+        for untouched_job in [j for j in jobs.get_all() if not j.touched]:
+            jobs.delete_job(untouched_job)
 
         # set last job, but only if there where no jobs before,
         # otherwise we want to still have the job that was selected before
-        if len(jobs.get_jobs()) > 0 and no_jobs_before:
+        if len(jobs.get_all()) > 0 and no_jobs_before:
             jobs.set_selected_render_job(
-                context, jobs.get_jobs()[len(jobs.get_jobs()) - 1].identifier
+                context, jobs.get_all()[len(jobs.get_all()) - 1].identifier
             )
         if current_job := jobs.get_selected_job(context):
             jobs._previous_job = current_job

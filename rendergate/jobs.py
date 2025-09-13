@@ -12,7 +12,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 
-import os
 import bpy
 import asyncio
 from requests import Response  # requests is included in Blender 4.5
@@ -26,7 +25,7 @@ from functools import partial
 from typing import Any
 from bpy.types import Context
 from ..utils import utils, rest_client
-from ..utils.models import Job
+from ..utils.models import Job, Image
 from ..utils.enums import Stage, StageIcon
 from ..utils.global_vars import rendergate_logger
 
@@ -41,18 +40,64 @@ def clear() -> None:
     _jobs.clear()
 
 
-def get_jobs() -> list[Job]:
+def get_all() -> list[Job]:
     """Return all rendergate render jobs."""
 
     return _jobs
 
 
-def add_job(job: Job) -> Job:
+def untouch_all() -> None:
+    """
+    Set all jobs to be untouched, meaning they neither got added nor updated.
+    Used for checking if a job needs to be deleted after jobs have been updated or added.
+    Jobs that didn't get updated or added, still have 'touched' false.
+    """
+
+    for job in _jobs:
+        job.touched = False
+
+
+def add_job(job_data: dict, index: int) -> Job:
     """Add a rendergate render job."""
 
-    _jobs.append(job)
+    new_job: Job = construct_render_job(job_data, index)
+
+    _jobs.append(new_job)
+
+    return new_job
+
+
+def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
+    """Update a job while keeping certain attributes."""
+
+    try:
+        job: Job = next((j for j in _jobs if j.identifier == identifier))
+    except (StopIteration, IndexError):
+        return None
+
+    # temporary save images list
+    images: list[Image] = job.images
+
+    updated_job: Job = construct_render_job(job_data, index)
+    # update attributes of the existing job object
+    for attribute, value in updated_job.__dict__.items():
+        setattr(job, attribute, value)
+
+    # new index
+    job.number = index
+
+    # keep list of images from original job
+    job.images = images
 
     return job
+
+
+def delete_job(job: Job) -> None:
+    """Delete job and its properties."""
+
+    # TODO implement
+
+    pass
 
 
 def get_selected_job(context: Context) -> Job | None:
@@ -64,7 +109,7 @@ def get_selected_job(context: Context) -> Job | None:
 
     try:
         selected_job: Job = next(
-            (j for j in get_jobs() if j.identifier == prefs.jobs), None
+            (j for j in get_all() if j.identifier == prefs.jobs), None
         )
     except IndexError as e:
         rendergate_logger.error(repr(e))
@@ -257,6 +302,7 @@ def construct_render_job(
         f"Job {index}\nCreated: {created_ago}\nProject: {project_name}\nStage: {stage}\nProgress: {progress_amount}\nCost Estimation: ${cost_estimation}\nCost: {cost}\nTime Estimation: {time_estimation_human}\nTime: {time_human}"
     )
 
+    # TODO outsource
     # create corresponding bpy properties job
     from ..properties.properties import JobProperties
 
@@ -267,6 +313,7 @@ def construct_render_job(
 
     return Job(
         identifier=job_id,
+        touched=True,
         number=index,
         name=job_name,
         display_name=f'"{job_name}" {created_ago}',

@@ -26,7 +26,7 @@ def create_job_list(self, context: Context):
 
     enums: list[tuple[str, str, str, int]] = []
 
-    for job in jobs.get_jobs():
+    for job in jobs.get_all():
         if not isinstance(job, Job):
             continue
         # make tuple for enum

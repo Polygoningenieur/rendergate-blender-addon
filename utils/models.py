@@ -31,6 +31,7 @@ class Image:
 @dataclass
 class Job:
     identifier: str
+    touched: bool
     number: int
     name: str
     display_name: str

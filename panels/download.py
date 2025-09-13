@@ -54,7 +54,7 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
         props: RendergateProperties = context.scene.rendergate_properties
         all_jobs_props: set[JobProperties] = context.scene.rendergate_jobs
-        all_jobs: list[Job] = jobs.get_jobs()
+        all_jobs: list[Job] = jobs.get_all()
 
         layout: UILayout = self.layout
         layout.use_property_split = False
