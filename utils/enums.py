@@ -30,6 +30,19 @@ class Stage(StrEnum):
     UNKNOWN = "Unknown Job Status"
 
 
+class StageIcon(StrEnum):
+    """An icon for each Rendergate job stage."""
+
+    INIT = "NODE_SOCKET_RGBA"
+    CALCULATING = "TEMP"
+    UPLOADED = "EXPORT"
+    PAYING = "SORTTIME"
+    RENDERING = "RENDER_STILL"
+    FINISHED = "NODE_SOCKET_SHADER"
+    CRASHED = "NOT_FOUND"
+    UNKNOWN = "QUESTION_LARGE"
+
+
 class ImageState(StrEnum):
     """The state an image can be in."""
 

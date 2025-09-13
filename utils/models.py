@@ -14,7 +14,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import PurePath
-from .enums import Stage, ImageState
+from .enums import Stage, StageIcon, ImageState
 
 
 @dataclass
@@ -38,6 +38,7 @@ class Job:
     created: str
     project_name: str
     stage: Stage
+    stage_icon: StageIcon
     progress: str
     cost_estimation: Decimal
     cost: Decimal

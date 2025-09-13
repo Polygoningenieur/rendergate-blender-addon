@@ -27,7 +27,7 @@ from typing import Any
 from bpy.types import Context
 from ..utils import utils, rest_client
 from ..utils.models import Job
-from ..utils.enums import Stage
+from ..utils.enums import Stage, StageIcon
 from ..utils.global_vars import rendergate_logger
 
 _jobs: list[Job] = []
@@ -164,6 +164,11 @@ def construct_render_job(
         stage: Stage = Stage[job_data.get("stage", Stage.UNKNOWN)]
     except KeyError:
         stage: Stage = Stage.UNKNOWN
+    # parse incoming stage string onto strEnum StageIcon
+    try:
+        stage_icon: StageIcon = StageIcon[job_data.get("stage", Stage.UNKNOWN)]
+    except KeyError:
+        stage_icon: StageIcon = StageIcon.UNKNOWN
 
     # check if time and cost has been calculated yet, if not, stage is CALCULATING
     time_est_key: str = "timeEstimate" if from_update_api else "timeEst"
@@ -269,6 +274,7 @@ def construct_render_job(
         created=created_ago,
         project_name=project_name,
         stage=stage,
+        stage_icon=stage_icon,
         progress=progress_amount,
         cost_estimation=cost_estimation,
         cost=cost,
