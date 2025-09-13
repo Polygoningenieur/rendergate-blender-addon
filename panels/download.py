@@ -18,6 +18,8 @@ from .panel import RendergatePanel
 from ..utils.utils import class_to_register
 from ..utils.models import Job
 from ..rendergate import jobs
+from ..utils.models import Image
+from ..utils.enums import ImageState
 from ..operators.open_folder import RENDERGATE_OT_open_folder
 from ..properties.properties import (
     RendergateProperties,
@@ -88,12 +90,23 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
             if not job_props.active_download:
                 continue
 
-            if job.frames <= 0:
-                progress_normalized: float = 0.0
-                progress: str = f"0/0"
-            else:
-                progress_normalized: float = len(job.images) / job.frames
-                progress: str = f"{len(job.images)}/{job.frames}"
+            downloaded_images: list[Image] = [
+                i for i in job.images if i.state == ImageState.DOWNLOADED
+            ]
+            error_images: list[Image] = [
+                i for i in job.images if i.state == ImageState.DIRNOTFOUND
+            ]
+
+            # get download progress
+            progress_normalized: float = 0.0
+            progress: str = f"0/0"
+            if job.frames > 0:
+                progress_normalized: float = len(downloaded_images) / job.frames
+                progress: str = f"{len(downloaded_images)}/{job.frames}"
+
+            # display count of erroneous images
+            if len(error_images) > 0:
+                progress += f" ({len(error_images)} Errors)"
 
             left.label(text=str(job.name))
 

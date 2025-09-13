@@ -84,7 +84,7 @@ def check_for_downloads() -> None:
         job_props: JobProperties = jobs.get_properties(bpy.context, job)
         if job_props is None:
             continue
-        # download images if they are down or currently rendering
+        # download images if the job is done or currently rendering
         if job.stage in [Stage.FINISHED, Stage.RENDERING] and job_props.active_download:
             task: Task = loop.create_task(download_images(bpy.context, job))
             bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
