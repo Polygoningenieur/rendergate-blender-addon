@@ -88,5 +88,13 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
             if not job_props.active_download:
                 continue
 
+            if job.frames <= 0:
+                progress_normalized: float = 0.0
+                progress: str = f"0/0"
+            else:
+                progress_normalized: float = len(job.images) / job.frames
+                progress: str = f"{len(job.images)}/{job.frames}"
+
             left.label(text=str(job.name))
-            right.label(text=f"{len(job.images)}/{job.frames}")
+
+            right.progress(factor=progress_normalized, type="BAR", text=progress)

@@ -110,35 +110,6 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                 progress: int = int(selected_job.progress * 100)
             job_details.label(text=f"Render Progress: {progress}%", icon="SORTSIZE")
 
-            downloaded_images: int = 0
-            loading_images: int = 0
-            erroneous_images: int = 0
-            for image in selected_job.images:
-                if PurePath(image.file_dir) != PurePath(prefs.download_folder):
-                    continue
-                if image.state == ImageState.DOWNLOADED:
-                    downloaded_images += 1
-                elif (
-                    image.state == ImageState.DOWNLOADING
-                    or image.state == ImageState.MISSING
-                ):
-                    loading_images += 1
-                elif image.state == ImageState.DIRNOTFOUND:
-                    erroneous_images += 1
-                else:  # unknown image state
-                    erroneous_images += 1
-
-            # show downloaded, loading and erroneous images
-            images_text: str = f"Downloaded Images:"
-            if downloaded_images > 0:
-                images_text += f" {downloaded_images}"
-            if loading_images > 0:
-                images_text += f" ({loading_images} loading)"
-            if erroneous_images > 0:
-                images_text += f" Errors with {erroneous_images} images"
-            if downloaded_images > 0 or loading_images > 0 or erroneous_images > 0:
-                job_details.label(text=images_text, icon="NODE_COMPOSITING")
-
             # checkbox to say if job should be downloaded or not
             job_props: JobProperties = jobs.get_properties(context, selected_job)
             if job_props is not None:
