@@ -18,6 +18,7 @@ from .panel import RendergatePanel
 from ..utils.utils import class_to_register
 from ..utils.models import Job
 from ..rendergate import jobs
+from ..operators.open_folder import RENDERGATE_OT_open_folder
 from ..properties.properties import (
     RendergateProperties,
     RendergatePreferences,
@@ -56,6 +57,21 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
         layout: UILayout = self.layout
         layout.use_property_split = False
         layout.use_property_decorate = False
+
+        download_folder_row: UILayout = layout.row(align=True)
+        download_folder_row.prop(
+            data=prefs,
+            property="download_folder",
+            text="Download to",
+        )
+        download_folder_row.separator()
+        download_folder_row.operator(
+            operator=RENDERGATE_OT_open_folder.bl_idname,
+            text="",
+            icon="FOLDER_REDIRECT",
+        )
+
+        layout.separator()
 
         split: UILayout = layout.split(factor=1 / 3)
         left: UILayout = split.column(align=True)

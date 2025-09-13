@@ -29,7 +29,6 @@ from ..properties.properties import (
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
 from ..operators.render import RENDERGATE_OT_invoke_render
 from ..operators.download_images import RENDERGATE_OT_download_images
-from ..operators.open_folder import RENDERGATE_OT_open_folder
 from ..operators.open_website import RENDERGATE_OT_open_website
 
 
@@ -175,37 +174,3 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                 operator=RENDERGATE_OT_invoke_render.bl_idname,
                 icon="RENDER_STILL",
             )
-
-        download_folder_row: UILayout = layout.row(align=True)
-        download_folder_row.prop(
-            data=prefs,
-            property="download_folder",
-            text="Download to",
-        )
-        download_folder_row.separator()
-        download_folder_row.operator(
-            operator=RENDERGATE_OT_open_folder.bl_idname,
-            text="",
-            icon="FOLDER_REDIRECT",
-        )
-
-        auto_download: UILayout = layout.row(align=True)
-        auto_download.prop(data=prefs, property="auto_download")
-
-        if not prefs.auto_download or props.download_images_progress < 1.0:
-            # download render results
-            download: UILayout = auto_download.row(align=True)
-            if props.download_images_progress < 1.0:
-                # fix for Blender display bug
-                progress_sandbox: UILayout = download.row(align=True)
-                progress_sandbox.separator(factor=0)
-                progress_sandbox.progress(
-                    factor=props.download_images_progress,
-                    type="BAR",
-                    text=props.download_images_progress_text,
-                )
-            else:
-                download.operator(
-                    operator=RENDERGATE_OT_download_images.bl_idname,
-                    icon="RENDER_RESULT",
-                )

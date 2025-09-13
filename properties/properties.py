@@ -204,12 +204,6 @@ class RendergatePreferences(AddonPreferences):
         default="",
     )
 
-    auto_download: BoolProperty(
-        name="Auto-Download Rendered Images",
-        description="Automatically downloads the rendered images of the selected job into the specified download folder",
-        default=True,
-    )
-
 
 @class_to_register
 class JobProperties(PropertyGroup):
@@ -218,6 +212,6 @@ class JobProperties(PropertyGroup):
     identifier: StringProperty()
 
     active_download: BoolProperty(
-        name="Auto-Download",
+        name=" Download",
         default=False,
     )

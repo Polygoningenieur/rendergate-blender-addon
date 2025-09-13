@@ -14,9 +14,11 @@
 __all__ = ["get_download_content", "s3_download_file"]
 
 
+import os
 import bpy
 import boto3
 import asyncio
+from typing import Any
 from pathlib import PurePath, Path
 from functools import partial
 from requests import Response  # requests is included in Blender 4.5
@@ -28,7 +30,7 @@ from botocore import exceptions
 from dataclasses import asdict
 from . import jobs
 from ..utils import utils, rest_client
-from ..utils.models import Job, S3Credentials
+from ..utils.models import Job, S3Credentials, Image, ImageState
 from ..utils.global_vars import rendergate_logger
 from ..utils.enums import Stage
 
@@ -84,7 +86,7 @@ def check_for_downloads() -> None:
             continue
         # download images if they are down or currently rendering
         if job.stage in [Stage.FINISHED, Stage.RENDERING] and job_props.active_download:
-            task: Task = loop.create_task(jobs.download_images(bpy.context, job))
+            task: Task = loop.create_task(download_images(bpy.context, job))
             bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
 
     return frequency
@@ -203,6 +205,77 @@ async def get_download_content(context: Context) -> list:
 
     # list of downloadable images is in Contents
     return s3_response.get("Contents", [])
+
+
+async def download_images(context: Context, job: Job):
+    """Download missing images."""
+
+    from ..properties.properties import RendergatePreferences
+
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
+    # set download folder already here, so if user changes it mid-download,
+    # we still download to the same initial folder
+    download_folder: PurePath = PurePath(bpy.path.abspath(prefs.download_folder))
+
+    # get list of downloadable images
+    contents: list[dict[str, Any]] | None = await get_download_content(context)
+    if contents is None:
+        return
+    if len(contents) == 0:
+        return
+
+    # download images
+    for content in contents:
+        key: str = content.get("Key")
+        if key is None:
+            continue
+
+        # download to specified folder
+        file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
+        file_dir: PurePath = PurePath(download_folder / job.name)
+        file_path: PurePath = PurePath(file_dir / file_name)
+
+        # get the current image from the job
+        image: Image = next((i for i in job.images if i.file_path == file_path), None)
+        if image is None:
+            image = Image(
+                file_path=file_path,
+                file_name=file_name,
+                file_dir=download_folder,
+                state=ImageState.MISSING,
+            )
+            job.images.append(image)
+
+        # check if image is not in folder yet
+        if os.path.isfile(file_path):
+            image.state = ImageState.DOWNLOADED
+            continue
+
+        # check if image is not being downloaded currently
+        elif image.state == ImageState.DOWNLOADING:
+            continue
+
+        # the directory was not found when trying to download the image
+        # when the user changes the download folder, new images will be created
+        # and their state starts with MISSING again
+        elif image.state == ImageState.DIRNOTFOUND:
+            continue
+
+        # image is neither present nor is it being downloaded at the moment
+        else:
+            image.state = ImageState.MISSING
+
+        # download image
+        image.state = ImageState.DOWNLOADING
+        try:
+            await s3_download_file(key, file_dir, file_name)
+        except FileNotFoundError as e:
+            image.state = ImageState.DIRNOTFOUND
+            rendergate_logger.info(f"Image {file_name} could not be downlaoded: {e}")
+        else:
+            image.state = ImageState.DOWNLOADED
+            rendergate_logger.info(f"Downloaded image {file_name}.")
 
 
 async def s3_download_file(key: str, file_dir: PurePath, file_name: str):
