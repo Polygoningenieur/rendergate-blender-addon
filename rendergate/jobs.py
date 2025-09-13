@@ -61,10 +61,23 @@ def add_job(job_data: dict, index: int) -> Job:
     """Add a rendergate render job."""
 
     new_job: Job = construct_render_job(job_data, index)
+    _add_job_properties(new_job)
 
     _jobs.append(new_job)
 
     return new_job
+
+
+def _add_job_properties(job: Job):
+    """Adds the corresponding bpy properties for this job."""
+
+    from ..properties.properties import JobProperties
+
+    all_jobs_props: set[JobProperties] = bpy.context.scene.rendergate_jobs
+
+    new_job_props: JobProperties = all_jobs_props.add()
+    new_job_props.identifier = job.identifier
+    new_job_props.active_download = False
 
 
 def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
@@ -301,15 +314,6 @@ def construct_render_job(
     description: str = (
         f"Job {index}\nCreated: {created_ago}\nProject: {project_name}\nStage: {stage}\nProgress: {progress_amount}\nCost Estimation: ${cost_estimation}\nCost: {cost}\nTime Estimation: {time_estimation_human}\nTime: {time_human}"
     )
-
-    # TODO outsource
-    # create corresponding bpy properties job
-    from ..properties.properties import JobProperties
-
-    all_jobs_props: set[JobProperties] = bpy.context.scene.rendergate_jobs
-    new_job_props: JobProperties = all_jobs_props.add()
-    new_job_props.identifier = job_id
-    new_job_props.active_download = False
 
     return Job(
         identifier=job_id,

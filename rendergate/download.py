@@ -76,12 +76,11 @@ def _check_for_downloads() -> None:
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences()
-    all_jobs: list[Job] = jobs.get_all()
 
     if not prefs.aws_token:
         return frequency
 
-    for job in all_jobs:
+    for job in jobs.get_all():
         job_props: JobProperties = jobs.get_properties(bpy.context, job)
         if job_props is None:
             continue
