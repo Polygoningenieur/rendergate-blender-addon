@@ -273,9 +273,9 @@ def construct_render_job(
     # human readable time estimation
     if from_update_api:
         time_est_dict: dict = estimation_dict.get("time", {})
-        time_estimation: float = time_est_dict.get("total", 0.0)
+        time_estimation: float = time_est_dict.get("total", 0.0) or 0.0
     else:
-        time_estimation: float = estimation_dict.get("timeEst", 0.0)
+        time_estimation: float = estimation_dict.get("timeEst", 0.0) or 0.0
     time_estimation_delta: timedelta = timedelta(milliseconds=time_estimation)
     time_estimation_human: str = humanize.precisedelta(
         time_estimation_delta, minimum_unit="minutes"
