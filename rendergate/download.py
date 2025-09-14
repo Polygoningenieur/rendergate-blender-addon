@@ -111,6 +111,8 @@ async def _download_images(context: Context, job: Job):
     if len(contents) == 0:
         return
 
+    file_dir: PurePath = PurePath(download_folder / job.name)
+
     # download images
     for content in contents:
         if props.stop_download:
@@ -129,7 +131,6 @@ async def _download_images(context: Context, job: Job):
 
         # download to specified folder
         file_name: str = f"{PurePath(key).stem}{PurePath(key).suffix}"
-        file_dir: PurePath = PurePath(download_folder / job.name)
         file_path: PurePath = PurePath(file_dir / file_name)
 
         # get the current image from the job
@@ -186,14 +187,17 @@ async def get_download_content(context: Context, job: Job) -> list:
         rendergate_logger.error(f"Client is None.")
         return []
 
+    max_keys: int = 100
     s3_response: dict | None = None
+    contents: list[dict] = []
 
+    list_objects_partial = partial(
+        job.download_client.list_objects_v2,
+        Bucket=job.download_credentials.bucket,
+        Prefix=job.download_credentials.basekey,
+        MaxKeys=max_keys,
+    )
     try:
-        list_objects_partial = partial(
-            job.download_client.list_objects_v2,
-            Bucket=job.download_credentials.bucket,
-            Prefix=job.download_credentials.basekey,
-        )
         s3_response = await loop.run_in_executor(None, list_objects_partial)
     except exceptions.ClientError as e:
         rendergate_logger.info(f"Client Error listing objects: {e}")
@@ -203,8 +207,30 @@ async def get_download_content(context: Context, job: Job) -> list:
         rendergate_logger.info(f"s3 response not a dict: {s3_response}")
         return []
 
-    # list of downloadable images is in Contents
-    return s3_response.get("Contents", [])
+    # initial content
+    contents = s3_response.get("Contents", [])
+
+    while s3_response.get("IsTruncated", False) or False:
+        continuation_token: str = s3_response.get("NextContinuationToken")
+        next_response_partial = partial(
+            job.download_client.list_objects_v2,
+            Bucket=job.download_credentials.bucket,
+            Prefix=job.download_credentials.basekey,
+            MaxKeys=max_keys,
+            ContinuationToken=continuation_token,
+        )
+        try:
+            s3_response = await loop.run_in_executor(None, next_response_partial)
+        except exceptions.ClientError as e:
+            rendergate_logger.info(f"Client Error listing continued objects: {e}")
+            break
+        if not isinstance(s3_response, dict):
+            rendergate_logger.info(f"s3 continued response not a dict: {s3_response}")
+            break
+
+        contents.extend(s3_response.get("Contents", []))
+
+    return contents
 
 
 async def _set_client_and_credentials(context: Context, job: Job) -> None:
