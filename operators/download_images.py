@@ -97,8 +97,6 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
     async def async_execute(self, context: Context, context_pointers: dict[str, Any]):
         """Download the rendered results from Rendergate.ch."""
 
-        # TODO check for downloadable images frequently, not only on button click (app timer handler)
-
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 

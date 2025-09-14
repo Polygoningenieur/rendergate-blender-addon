@@ -63,6 +63,7 @@ class Job:
     active_download: bool
     download_credentials: S3Credentials
     download_client: Any
+    selected: bool
 
     def __eq__(self, other: str):
         return self.identifier == other

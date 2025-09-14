@@ -68,8 +68,7 @@ def _check_for_downloads() -> None:
     from ..properties.properties import RendergateProperties, RendergatePreferences
 
 
-    # TODO increase frequency
-    frequency: float = 5.0
+    frequency: float = 60.0
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences()

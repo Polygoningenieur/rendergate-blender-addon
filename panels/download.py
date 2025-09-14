@@ -21,6 +21,7 @@ from ..rendergate import jobs
 from ..utils.models import Image
 from ..utils.enums import ImageState
 from ..operators.open_folder import RENDERGATE_OT_open_folder
+from ..operators.select_job import RENDERGATE_OT_select_job
 from ..properties.properties import RendergatePreferences
 
 
@@ -99,4 +100,15 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
 
             left.label(text=str(job.name))
 
-            right.progress(factor=progress_normalized, type="BAR", text=progress)
+            right_row: UILayout = right.row(align=True)
+            right_row.progress(factor=progress_normalized, type="BAR", text=progress)
+
+            select_operator_layout: UILayout = right_row.row(align=True)
+            select_operator_layout.enabled = not job.selected
+            select_operator: RENDERGATE_OT_select_job = select_operator_layout.operator(
+                operator=RENDERGATE_OT_select_job.bl_idname,
+                text="",
+                icon="RESTRICT_SELECT_OFF",
+            )
+            select_operator.job_name = job.name
+            select_operator.job_identifier = job.identifier

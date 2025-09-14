@@ -65,9 +65,15 @@ def update_selected_job(self, context: Context) -> None:
 
     jobs.check_for_job_updates(context)
 
-    # set the unified active download property to the value that is set for this job
+    # deselect other job
+    for job in jobs.get_all():
+        job.selected = False
+
     selected_job: Job = jobs.get_selected_job(context)
     if selected_job is not None:
+        # set job as selected
+        selected_job.selected = True
+        # set the unified active download property to the value that is set for this job
         prefs.active_download = selected_job.active_download
 
 

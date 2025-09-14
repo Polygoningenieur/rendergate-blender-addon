@@ -82,6 +82,7 @@ def update_job(
     active_download: bool = job.active_download
     download_credentials: S3Credentials = job.download_credentials
     download_client: Any = job.download_client
+    selected: bool = job.selected
 
     updated_job: Job = construct_render_job(job_data, index, from_update_api)
     # update attributes of the existing job object
@@ -95,6 +96,7 @@ def update_job(
     job.active_download = active_download
     job.download_credentials = download_credentials
     job.download_client = download_client
+    job.selected = selected
 
     return job
 
@@ -160,7 +162,6 @@ def update_selected_job_timer(context: Context, job: Job) -> None:
 
 async def update_selected_job(context: Context, job: Job) -> None:
     """Requests the job details from rendergate."""
-    # TODO combine with update_job function
 
     from ..properties.properties import RendergatePreferences, RendergateProperties
 
@@ -317,6 +318,7 @@ def construct_render_job(
         active_download=False,
         download_credentials=None,
         download_client=None,
+        selected=False,
     )
 
 
