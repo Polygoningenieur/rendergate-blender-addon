@@ -67,7 +67,9 @@ def add_job(job_data: dict, index: int) -> Job:
     return new_job
 
 
-def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
+def update_job(
+    job_data: dict, index: int, identifier: str, from_update_api: bool = False
+) -> Job | None:
     """Update a job while keeping certain attributes."""
 
     try:
@@ -81,7 +83,7 @@ def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
     download_credentials: S3Credentials = job.download_credentials
     download_client: Any = job.download_client
 
-    updated_job: Job = construct_render_job(job_data, index)
+    updated_job: Job = construct_render_job(job_data, index, from_update_api)
     # update attributes of the existing job object
     for attribute, value in updated_job.__dict__.items():
         setattr(job, attribute, value)
@@ -182,23 +184,7 @@ async def update_selected_job(context: Context, job: Job) -> None:
     if not isinstance(response_json, dict):
         return
 
-    # temporary save some attributes
-    images: list[Image] = job.images
-    active_download: bool = job.active_download
-    download_credentials: S3Credentials = job.download_credentials
-    download_client: Any = job.download_client
-
-    # update details
-    updated_job: Job = construct_render_job(response_json, job.number, True)
-    for job_attribute in updated_job.__dict__:
-
-        setattr(job, job_attribute, getattr(updated_job, job_attribute))
-
-    # set attributes that are independent from API job
-    job.images = images
-    job.active_download = active_download
-    job.download_credentials = download_credentials
-    job.download_client = download_client
+    update_job(response_json, job.number, job.identifier, True)
 
 
 def construct_render_job(
