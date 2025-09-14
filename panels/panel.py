@@ -19,6 +19,7 @@ from ..utils.global_vars import rendergate_images
 from ..properties.properties import RendergatePreferences, RendergateProperties
 from ..operators.login import RENDERGATE_OT_login
 from ..operators.open_prefs import RENDERGATE_OT_open_prefs
+from ..operators.new_job import RENDERGATE_OT_invoke_new_job
 
 
 class RendergatePanel:
@@ -94,3 +95,22 @@ class RENDERGATE_PT_rendergate(RendergatePanel, Panel):
             else:
                 login_operator.operator(operator=RENDERGATE_OT_login.bl_idname)
             return
+
+        # create new project
+        project_settings: UILayout = layout.column(align=True)
+        project_settings.prop(data=prefs, property="job_name")
+        # project_settings.prop(data=prefs, property="project_name")
+        new_job: UILayout = layout.row(align=True)
+        if props.create_job_progress < 1.0:
+            # fix for Blender display bug
+            progress_sandbox: UILayout = new_job.row(align=True)
+            progress_sandbox.separator(factor=0)
+            progress_sandbox.progress(
+                factor=props.create_job_progress,
+                type="BAR",
+                text=props.create_job_progress_text,
+            )
+        else:
+            new_job.operator(
+                operator=RENDERGATE_OT_invoke_new_job.bl_idname, icon="ADD"
+            )

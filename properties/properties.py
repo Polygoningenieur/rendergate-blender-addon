@@ -183,7 +183,7 @@ class RendergatePreferences(AddonPreferences):
     )
 
     job_name: StringProperty(
-        name="Job Name*",
+        name="Name*",
         description="Name of the job that will be created",
         default="",
         options={"HIDDEN", "SKIP_SAVE"},

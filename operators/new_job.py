@@ -242,7 +242,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
 @class_to_register
 class RENDERGATE_OT_invoke_new_job(Operator):
     bl_idname: str = "rendergate.invoke_new_job"
-    bl_label: str = "Create Job..."
+    bl_label: str = "Create New Job..."
     bl_description: str = ""
     bl_options = {"REGISTER", "INTERNAL"}
 

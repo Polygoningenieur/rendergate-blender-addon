@@ -31,7 +31,7 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
     bl_idname = "RENDERGATE_PT_download"
     bl_label = "Downloads"
     bl_parent_id = "RENDERGATE_PT_rendergate"
-    bl_order = 2
+    bl_order = 1
 
     @classmethod
     def poll(cls, context: Context):
@@ -53,11 +53,14 @@ class RENDERGATE_PT_download(RendergatePanel, Panel):
         layout.use_property_split = False
         layout.use_property_decorate = False
 
-        download_folder_row: UILayout = layout.row(align=True)
+        download_container: UILayout = layout.column(align=True)
+        download_container.label(text="Parent Download Folder,")
+        download_container.label(text="Jobs Get Their Own Subfolder.")
+        download_folder_row: UILayout = download_container.row(align=True)
         download_folder_row.prop(
             data=prefs,
             property="download_folder",
-            text="Download to",
+            text="",
         )
         download_folder_row.separator()
         download_folder_row.operator(
