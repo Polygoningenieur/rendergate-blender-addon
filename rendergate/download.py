@@ -35,10 +35,6 @@ from ..utils.global_vars import rendergate_logger
 from ..utils.enums import Stage
 
 
-_s3_client = None
-_credentials: S3Credentials | None = None
-
-
 class CredentialsError(Exception):
     pass
 
@@ -73,7 +69,7 @@ def _check_for_downloads() -> None:
 
 
     # TODO increase frequency
-    frequency: float = 5.0
+    frequency: float = 2.0
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences()
@@ -102,8 +98,10 @@ async def _download_images(context: Context, job: Job):
     download_folder: PurePath = PurePath(bpy.path.abspath(prefs.download_folder))
 
     # get list of downloadable images
-    contents: list[dict[str, Any]] | None = await get_download_content(context)
+    contents: list[dict[str, Any]] | None = await get_download_content(context, job)
     if contents is None:
+        return
+    if not isinstance(contents, list):
         return
     if len(contents) == 0:
         return
@@ -112,6 +110,13 @@ async def _download_images(context: Context, job: Job):
     for content in contents:
         key: str = content.get("Key")
         if key is None:
+            continue
+
+        # check if the content is for the correct job
+        if job.identifier not in key:
+            rendergate_logger.error(
+                f"Got content for wrong job! (Job: {job.identifier} Content: {key})"
+            )
             continue
 
         # download to specified folder
@@ -125,7 +130,7 @@ async def _download_images(context: Context, job: Job):
             image = Image(
                 file_path=file_path,
                 file_name=file_name,
-                file_dir=download_folder,
+                file_dir=file_dir,
                 state=ImageState.MISSING,
             )
             job.images.append(image)
@@ -152,7 +157,7 @@ async def _download_images(context: Context, job: Job):
         # download image
         image.state = ImageState.DOWNLOADING
         try:
-            await s3_download_file(key, file_dir, file_name)
+            await s3_download_file(job, key, file_dir, file_name)
         except FileNotFoundError as e:
             image.state = ImageState.DIRNOTFOUND
             rendergate_logger.info(f"Image {file_name} could not be downlaoded: {e}")
@@ -161,15 +166,15 @@ async def _download_images(context: Context, job: Job):
             rendergate_logger.info(f"Downloaded image {file_name}.")
 
 
-async def get_download_content(context: Context) -> list:
+async def get_download_content(context: Context, job: Job) -> list:
     """
     Get the Contents list of the download, containing the files that can be downloaded.
     """
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
 
-    await _set_client(context)
-    if _s3_client is None:
+    await _set_client_and_credentials(context, job)
+    if job.download_client is None:
         rendergate_logger.error(f"Client is None.")
         return []
 
@@ -177,9 +182,9 @@ async def get_download_content(context: Context) -> list:
 
     try:
         list_objects_partial = partial(
-            _s3_client.list_objects_v2,
-            Bucket=_credentials.bucket,
-            Prefix=_credentials.basekey,
+            job.download_client.list_objects_v2,
+            Bucket=job.download_credentials.bucket,
+            Prefix=job.download_credentials.basekey,
         )
         s3_response = await loop.run_in_executor(None, list_objects_partial)
     except exceptions.ClientError as e:
@@ -194,92 +199,92 @@ async def get_download_content(context: Context) -> list:
     return s3_response.get("Contents", [])
 
 
-async def _set_client(context: Context) -> None:
-    """Set the s3 client, creates it if client doesn't exist yet."""
-
-    global _s3_client, _credentials
+async def _set_client_and_credentials(context: Context, job: Job) -> None:
+    """
+    Sets the s3 client for the job,
+    creates client and credentials if they don't exist yet.
+    """
 
     try:
-
-        if _s3_client is None:
-
+        # no client, create one
+        if job.download_client is None:
             rendergate_logger.info("No client, creating...")
 
-            if _credentials is None or None in asdict(_credentials).values():
+            # no credentials to create client, get them
+            if (
+                job.download_credentials is None
+                or None in asdict(job.download_credentials).values()
+            ):
                 rendergate_logger.info("No creds, requesting...")
                 try:
-                    _credentials = await _get_download_credentials(context)
+                    await _set_download_credentials(context, job)
                 except CredentialsError as e:
                     rendergate_logger.error(f"Error getting credentials: {e}")
                     # TODO what to do, retry?
-                    _s3_client = None
+                    job.download_client = None
                     return
                 else:
                     rendergate_logger.info(
-                        f"New credentials: {str(_credentials)[:100]}..."
+                        f"New credentials: {str(job.download_credentials)[:100]}..."
                     )
 
             # create s3 client
-            _s3_client = boto3.client(
+            job.download_client = boto3.client(
                 "s3",
-                aws_access_key_id=_credentials.access_key,
-                aws_secret_access_key=_credentials.secret_access_key,
-                aws_session_token=_credentials.session_token,
+                aws_access_key_id=job.download_credentials.access_key,
+                aws_secret_access_key=job.download_credentials.secret_access_key,
+                aws_session_token=job.download_credentials.session_token,
             )
+
     except Exception as err:
         rendergate_logger.error(f"{err}")
+        job.download_client = None
 
 
-async def _get_download_credentials(context: Context) -> S3Credentials | None:
+async def _set_download_credentials(context: Context, job: Job) -> None:
     """Get the download credentials from AWS."""
-
-    global _credentials
 
     from ..properties.properties import RendergateProperties, RendergatePreferences
 
     props: RendergateProperties = context.scene.rendergate_properties
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
-    selected_job: Job = jobs.get_selected_job(context)
-    if selected_job is None:
-        raise CredentialsError(f"No job selected.")
-
     # download render job
     response: Response | str = await rest_client.request(
-        url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/downloadPerm",
+        url=f"{props.rendergate_api_url}/project/{job.identifier}/downloadPerm",
         headers={"auth": prefs.aws_token},
         request_type="GET",
     )
 
     # error occured
     if isinstance(response, str):
+        job.download_credentials = None
         raise CredentialsError(f"Error getting download credentials: {response}")
 
     try:
         response_json: dict = response.json()
     except JSONDecodeError as e:
+        job.download_credentials = None
         raise CredentialsError(f"Couldn't decode boto3 s3 response: {e}")
 
     credentials_obj: dict = response_json.get("credentials", {})
-    _credentials = S3Credentials(
+    job.download_credentials = S3Credentials(
         bucket=response_json.get("bucket"),
         basekey=response_json.get("baseKey"),
         access_key=credentials_obj.get("AccessKeyId"),
         secret_access_key=credentials_obj.get("SecretAccessKey"),
         session_token=credentials_obj.get("SessionToken"),
     )
-    if None in asdict(_credentials).values():
-        message: str = f"Got invalid credentials: {_credentials}"
-        _credentials = None
+    if None in asdict(job.download_credentials).values():
+        message: str = f"Got invalid credentials: {job.download_credentials}"
+        job.download_credentials = None
         raise CredentialsError(message)
 
-    return _credentials
 
-
-async def s3_download_file(key: str, file_dir: PurePath, file_name: str):
+async def s3_download_file(job: Job, key: str, file_dir: PurePath, file_name: str):
     """Downloads a file to the specified file_path."""
 
-    # make sure file path exists
+    # make sure file dir exists
     Path(file_dir).mkdir(parents=True, exist_ok=True)
 
     file_path: PurePath = PurePath(file_dir / file_name)
@@ -287,8 +292,8 @@ async def s3_download_file(key: str, file_dir: PurePath, file_name: str):
     loop: AbstractEventLoop = asyncio.get_event_loop()
 
     download_file_partial = partial(
-        _s3_client.download_file,
-        _credentials.bucket,
+        job.download_client.download_file,
+        job.download_credentials.bucket,
         key,
         file_path,
     )

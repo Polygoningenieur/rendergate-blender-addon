@@ -25,7 +25,7 @@ from functools import partial
 from typing import Any
 from bpy.types import Context
 from ..utils import utils, rest_client
-from ..utils.models import Job, Image
+from ..utils.models import Job, Image, S3Credentials
 from ..utils.enums import Stage, StageIcon
 from ..utils.global_vars import rendergate_logger
 
@@ -78,6 +78,8 @@ def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
     # temporary save some attributes
     images: list[Image] = job.images
     active_download: bool = job.active_download
+    download_credentials: S3Credentials = job.download_credentials
+    download_client: Any = job.download_client
 
     updated_job: Job = construct_render_job(job_data, index)
     # update attributes of the existing job object
@@ -89,6 +91,8 @@ def update_job(job_data: dict, index: int, identifier: str) -> Job | None:
     # keep list of images from original job
     job.images = images
     job.active_download = active_download
+    job.download_credentials = download_credentials
+    job.download_client = download_client
 
     return job
 
@@ -154,6 +158,7 @@ def update_selected_job_timer(context: Context, job: Job) -> None:
 
 async def update_selected_job(context: Context, job: Job) -> None:
     """Requests the job details from rendergate."""
+    # TODO combine with update_job function
 
     from ..properties.properties import RendergatePreferences, RendergateProperties
 
@@ -180,6 +185,8 @@ async def update_selected_job(context: Context, job: Job) -> None:
     # temporary save some attributes
     images: list[Image] = job.images
     active_download: bool = job.active_download
+    download_credentials: S3Credentials = job.download_credentials
+    download_client: Any = job.download_client
 
     # update details
     updated_job: Job = construct_render_job(response_json, job.number, True)
@@ -190,6 +197,8 @@ async def update_selected_job(context: Context, job: Job) -> None:
     # set attributes that are independent from API job
     job.images = images
     job.active_download = active_download
+    job.download_credentials = download_credentials
+    job.download_client = download_client
 
 
 def construct_render_job(
@@ -222,7 +231,7 @@ def construct_render_job(
         progress_amount_dict: float = progress.get("progress", {})
         file_settings: dict = job_data.get("fileSettings", {})
         start_frame: int = file_settings.get("start", 1)
-        stop_frame: int = file_settings.get("end", 1)
+        stop_frame: int = file_settings.get("end", 0)
         num_frames = stop_frame - start_frame + 1
         if num_frames <= 0:
             progress_amount: float = 0.0
@@ -318,8 +327,10 @@ def construct_render_job(
         time_human=time_human,
         preview_link=preview,
         images=[],
-        active_download=False,
         frames=num_frames,
+        active_download=False,
+        download_credentials=None,
+        download_client=None,
     )
 
 

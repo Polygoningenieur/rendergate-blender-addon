@@ -161,7 +161,7 @@ class RENDERGATE_OT_download_images(Operator, AsyncModalOperatorMixin):
             file_path: PurePath = PurePath(file_dir / file_name)
 
             try:
-                await download.s3_download_file(key, file_dir, file_name)
+                await download.s3_download_file(selected_job, key, file_dir, file_name)
             except FileNotFoundError:
                 abort_message = f"No such folder to download to ({file_path})."
                 break

@@ -14,6 +14,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import PurePath
+from typing import Any
 from .enums import Stage, StageIcon, ImageState
 
 
@@ -26,6 +27,15 @@ class Image:
 
     def __eq__(self, other: str):
         return self.file_path == other
+
+
+@dataclass
+class S3Credentials:
+    bucket: str | None
+    basekey: str | None
+    access_key: str | None
+    secret_access_key: str | None
+    session_token: str | None
 
 
 @dataclass
@@ -49,17 +59,10 @@ class Job:
     time_human: str
     preview_link: str
     images: list[Image]
-    active_download: bool
     frames: int
+    active_download: bool
+    download_credentials: S3Credentials
+    download_client: Any
 
     def __eq__(self, other: str):
         return self.identifier == other
-
-
-@dataclass
-class S3Credentials:
-    bucket: str | None
-    basekey: str | None
-    access_key: str | None
-    secret_access_key: str | None
-    session_token: str | None
