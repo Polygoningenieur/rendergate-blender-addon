@@ -87,3 +87,15 @@ def update_active_download(self, context: Context) -> None:
     selected_job: Job = jobs.get_selected_job(context)
     if selected_job is not None:
         selected_job.active_download = prefs.active_download
+
+
+def update_download_folder(self, context: Context) -> None:
+    """Reset all images."""
+
+    from ..properties.properties import RendergateProperties
+
+    props: RendergateProperties = context.scene.rendergate_properties
+
+    props.stop_download = True
+
+    [job.images.clear() for job in jobs.get_all()]

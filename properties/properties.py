@@ -119,6 +119,12 @@ class RendergateProperties(PropertyGroup):
         description="Your rendergate.ch render credit balance. You can add more on rendergate.ch",
     )
 
+    stop_download: BoolProperty(
+        name="Stop Download",
+        description="Flag to let async tasks know to stop",
+        default=False,
+    )
+
 
 @class_to_register
 class RendergatePreferences(AddonPreferences):
@@ -202,6 +208,7 @@ class RendergatePreferences(AddonPreferences):
         description="The folder where rendered results from Rendergate.ch will be stored in",
         subtype="DIR_PATH",
         default="",
+        update=property_updates.update_download_folder,
     )
 
     active_download: BoolProperty(

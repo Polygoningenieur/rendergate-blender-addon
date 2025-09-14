@@ -65,14 +65,15 @@ def _check_for_downloads() -> None:
     and downloads images if there are any.
     """
 
-    from ..properties.properties import RendergatePreferences
+    from ..properties.properties import RendergateProperties, RendergatePreferences
 
 
     # TODO increase frequency
-    frequency: float = 2.0
+    frequency: float = 5.0
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences()
+    props: RendergateProperties = bpy.context.scene.rendergate_properties
 
     if not prefs.aws_token:
         return frequency
@@ -83,15 +84,19 @@ def _check_for_downloads() -> None:
             task: Task = loop.create_task(_download_images(bpy.context, job))
             bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
 
+    # reset stop download flag
+    props.stop_download = False
+
     return frequency
 
 
 async def _download_images(context: Context, job: Job):
     """Download missing images."""
 
-    from ..properties.properties import RendergatePreferences
+    from ..properties.properties import RendergateProperties, RendergatePreferences
 
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+    props: RendergateProperties = context.scene.rendergate_properties
 
     # set download folder already here, so if user changes it mid-download,
     # we still download to the same initial folder
@@ -108,6 +113,9 @@ async def _download_images(context: Context, job: Job):
 
     # download images
     for content in contents:
+        if props.stop_download:
+            return
+
         key: str = content.get("Key")
         if key is None:
             continue
