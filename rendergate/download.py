@@ -43,6 +43,7 @@ class CredentialsError(Exception):
 def load_handler(_):
     """On file load, add a timer that periodically checks for downloads."""
 
+    print(f"Load Handler: {bpy.data.filepath = }")
 
     try:
         bpy.app.timers.unregister(bpy.__rendergate_downloads)
@@ -54,6 +55,8 @@ def load_handler(_):
         bpy.app.timers.register(_check_for_downloads)
     except Exception as e:
         rendergate_logger.error(f"Could not register download timer: {e}")
+    else:
+        print("Download timer registered.")
 
     # keep reference so we can unregister anytime anywhere
     bpy.__rendergate_downloads = _check_for_downloads
@@ -67,6 +70,7 @@ def _check_for_downloads() -> None:
 
     from ..properties.properties import RendergateProperties, RendergatePreferences
 
+    print("Periodic check for downloads...")
 
     frequency: float = 60.0
 
@@ -80,6 +84,7 @@ def _check_for_downloads() -> None:
     for job in jobs.get_all():
         # download images if the job is done or currently rendering
         if job.stage in [Stage.FINISHED, Stage.RENDERING] and job.active_download:
+            print(f"Download images for {job.name}...")
             task: Task = loop.create_task(_download_images(bpy.context, job))
             bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
 
@@ -172,6 +177,10 @@ async def _download_images(context: Context, job: Job):
         else:
             image.state = ImageState.DOWNLOADED
             rendergate_logger.info(f"Downloaded image {file_name}.")
+
+    print(
+        f"{job.name} IMAGES: {len(job.images)}\nMISSING: {len([i for i in job.images if i.state == ImageState.MISSING])}\nDOWNLOADED: {len([i for i in job.images if i.state == ImageState.DOWNLOADED])}\nDOWNLOADING: {len([i for i in job.images if i.state == ImageState.DOWNLOADING])}\nDIRNOTFOUND: {len([i for i in job.images if i.state == ImageState.DIRNOTFOUND])}"
+    )
 
 
 async def get_download_content(context: Context, job: Job) -> list:
