@@ -32,7 +32,7 @@ bl_info = {
     "author": "Polygoningenieur Gustav Hahn",
     "description": "Allows you to render in the cloud with Rendergate.ch",
     "blender": (4, 4, 0),
-    "version": (0, 1, 60),
+    "version": (0, 1, 61),
     "location": "Properties -> Render",
     "warning": "",
     "doc_url": "https://github.com/Polygoningenieur/rendergate-blender-addon",
@@ -69,9 +69,13 @@ def register() -> None:
     remove_timers()
 
     bpy.app.handlers.load_post.append(load_handler)
+    # call load handler manually as well, to trigger it after user installed addon
+    # otherwise user would need to reopen Blender to trigger the load_post handler
+    load_handler()
 
     # TODO remove debug
     import datetime
+
     print(f"{datetime.datetime.now()} Rendergate Addon registered.")
 
 

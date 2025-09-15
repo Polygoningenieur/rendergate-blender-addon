@@ -40,10 +40,10 @@ class CredentialsError(Exception):
 
 
 @persistent
-def load_handler(_):
+def load_handler(file_path:str = ""):
     """On file load, add a timer that periodically checks for downloads."""
 
-    print(f"Load Handler: {bpy.data.filepath = }")
+    print(f"Load Handler: {file_path = }")
 
     try:
         bpy.app.timers.unregister(bpy.__rendergate_downloads)
@@ -72,7 +72,7 @@ def _check_for_downloads() -> None:
 
     print("Periodic check for downloads...")
 
-    frequency: float = 60.0
+    frequency: float = 15.0
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences()
