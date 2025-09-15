@@ -32,7 +32,7 @@ bl_info = {
     "author": "Polygoningenieur Gustav Hahn",
     "description": "Allows you to render in the cloud with Rendergate.ch",
     "blender": (4, 4, 0),
-    "version": (0, 1, 61),
+    "version": (0, 1, 62),
     "location": "Properties -> Render",
     "warning": "",
     "doc_url": "https://github.com/Polygoningenieur/rendergate-blender-addon",

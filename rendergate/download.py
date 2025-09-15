@@ -121,6 +121,8 @@ async def _download_images(context: Context, job: Job):
     for content in contents:
         if props.stop_download:
             return
+        if not job.active_download:
+            return
 
         key: str = content.get("Key")
         if key is None:
