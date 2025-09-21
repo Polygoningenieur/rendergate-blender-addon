@@ -28,6 +28,7 @@ from ..utils import utils, rest_client
 from ..utils.models import Job, Image, S3Credentials
 from ..utils.enums import Stage, StageIcon
 from ..utils.global_vars import rendergate_logger
+from .login import get_aws_token
 
 _jobs: list[Job] = []
 _previous_job: str = ""
@@ -169,9 +170,10 @@ async def update_selected_job(context: Context, job: Job) -> None:
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
     # get rendergate jobs
+    aws_token=await get_aws_token(context)
     response: Response | str = await rest_client.request(
         url=f"{props.rendergate_api_url}/project/{job.identifier}",
-        headers={"auth": prefs.aws_token},
+        headers={"auth": aws_token},
         request_type="GET",
     )
 

@@ -52,6 +52,7 @@ async def login(context: Context) -> None:
 
     # login sucessfull
     prefs.aws_token = user.id_token
+    prefs.aws_access_token = user.id_token
     prefs.aws_refresh_token = user.refresh_token
 
     # from Blender ID Authentication Addon:
@@ -66,6 +67,25 @@ async def login(context: Context) -> None:
     prefs.password = random_string
     prefs.password = ""
 
+async def get_aws_token(context: Context) -> str:
+    loop: AbstractEventLoop = asyncio.get_event_loop()
+    prefs: RendergatePreferences = RendergatePreferences.preferences(context)
+
+    user:Cognito=Cognito(
+        user_pool_id=USER_POOL_ID,
+        client_id=USER_POOL_WEB_CLIENT_ID,
+        user_pool_region=REGION,
+        username=prefs.username,
+        id_token=prefs.aws_token,
+        access_token=prefs.aws_acccess_token,
+        refresh_token=prefs.aws_refresh_token
+    )
+    await loop.run_in_executor(None,user.check_token)
+
+    prefs.aws_token = user.id_token
+    prefs.aws_access_token = user.access_token_token
+    prefs.aws_refresh_token = user.refresh_token
+    return user.id_token
 
 def refresh_id_token() -> None:
     """

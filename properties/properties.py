@@ -174,6 +174,12 @@ class RendergatePreferences(AddonPreferences):
         default="",
         options={"HIDDEN", "SKIP_SAVE"},
     )
+    aws_acccess_token: StringProperty(
+        name="AWS Access Token",
+        description="The token we get when logging into AWS Cognito.",
+        default="",
+        options={"HIDDEN", "SKIP_SAVE"},
+    )
 
     aws_refresh_token: StringProperty(
         name="AWS Refresh Token",

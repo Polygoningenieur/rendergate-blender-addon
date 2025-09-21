@@ -29,6 +29,7 @@ from ..utils.enums import Stage
 from ..utils.global_vars import rendergate_logger
 from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..operators.get_jobs import RENDERGATE_OT_get_jobs
+from ..rendergate.login import get_aws_token
 
 
 @class_to_register
@@ -65,8 +66,9 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
         await progress(props, "render_job_progress", 0.1, context)
 
         selected_job: Job = jobs.get_selected_job(context)
+        aws_token=await get_aws_token(context)
 
-        headers: dict = {"auth": prefs.aws_token}
+        headers: dict = {"auth": aws_token}
         payload: dict = {
             "fromBeginning": True,
             "chips": float(props.render_credits),

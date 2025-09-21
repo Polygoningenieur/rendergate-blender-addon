@@ -29,6 +29,7 @@ from json.decoder import JSONDecodeError
 from botocore import exceptions
 from dataclasses import asdict
 from . import jobs
+from .login import get_aws_token
 from ..utils import utils, rest_client
 from ..utils.models import Job, S3Credentials, Image, ImageState
 from ..utils.global_vars import rendergate_logger
@@ -292,11 +293,11 @@ async def _set_download_credentials(context: Context, job: Job) -> None:
 
     props: RendergateProperties = context.scene.rendergate_properties
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-
+    aws_token=await get_aws_token(context)
     # download render job
     response: Response | str = await rest_client.request(
         url=f"{props.rendergate_api_url}/project/{job.identifier}/downloadPerm",
-        headers={"auth": prefs.aws_token},
+        headers={"auth": aws_token},
         request_type="GET",
     )
 

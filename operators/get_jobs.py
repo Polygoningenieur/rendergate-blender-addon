@@ -26,6 +26,7 @@ from ..properties.properties import RendergateProperties, RendergatePreferences
 from ..utils.global_vars import rendergate_logger
 from ..utils.models import Job
 from ..rendergate import jobs
+from ..rendergate.login import get_aws_token
 
 
 @class_to_register
@@ -97,8 +98,9 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
             pass
 
         no_jobs_before: bool = True if not jobs.get_all() else False
+        aws_token=await get_aws_token(context)
 
-        headers: dict = {"auth": prefs.aws_token}
+        headers: dict = {"auth": aws_token}
 
         # get rendergate jobs
         response: Response | str = await rest_client.request(

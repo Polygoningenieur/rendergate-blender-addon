@@ -22,6 +22,7 @@ from typing import Any
 from requests import Response  # requests is included in Blender 4.5
 from .get_jobs import RENDERGATE_OT_get_jobs
 from ..rendergate import jobs
+from ..rendergate.login import get_aws_token
 from ..utils.async_loop import AsyncModalOperatorMixin
 from ..utils import rest_client
 from ..utils.global_vars import rendergate_logger
@@ -87,7 +88,8 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
         props.create_job_progress_text = "10% - Creating Job..."
         await progress(props, "create_job_progress", 0.1, context)
 
-        headers: dict = {"auth": prefs.aws_token}
+        aws_token=await get_aws_token(context)
+        headers: dict = {"auth": aws_token}
 
         # construct payload
         file_name: str = path_leaf(props.blend_file_path)

@@ -26,6 +26,7 @@ from ..utils.utils import (
     is_string_blank,
 )
 from ..rendergate import jobs
+from ..rendergate.login import get_aws_token
 from ..utils import rest_client
 from ..utils.models import Job
 from ..utils.enums import Stage
@@ -111,8 +112,8 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
         await progress(props, "download_job_progress", progress_start, context)
 
         selected_job: Job = jobs.get_selected_job(context)
-
-        headers: dict = {"auth": prefs.aws_token}
+        aws_token=await get_aws_token()
+        headers: dict = {"auth": aws_token}
 
         # download render job
         response: Response | str = await rest_client.request(
