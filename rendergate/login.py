@@ -21,7 +21,6 @@ from warrant import Cognito
 from bpy.types import Context
 from asyncio import AbstractEventLoop
 from ..utils.global_vars import rendergate_logger
-from ..properties.properties import RendergatePreferences
 
 
 # aws authentication
@@ -34,6 +33,7 @@ USER_POOL_WEB_CLIENT_ID: str = "6m7eldka3q9f20nmev7smovnf6"
 async def login(context: Context) -> None:
     """Logs the user in using Cognito."""
 
+    from ..properties.properties import RendergatePreferences
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
@@ -52,7 +52,7 @@ async def login(context: Context) -> None:
 
     # login sucessfull
     prefs.aws_token = user.id_token
-    prefs.aws_access_token = user.id_token
+    prefs.aws_access_token = user.access_token
     prefs.aws_refresh_token = user.refresh_token
 
     # from Blender ID Authentication Addon:
@@ -68,30 +68,33 @@ async def login(context: Context) -> None:
     prefs.password = ""
 
 async def get_aws_token(context: Context) -> str:
+    from ..properties.properties import RendergatePreferences
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-
     user:Cognito=Cognito(
         user_pool_id=USER_POOL_ID,
         client_id=USER_POOL_WEB_CLIENT_ID,
         user_pool_region=REGION,
         username=prefs.username,
         id_token=prefs.aws_token,
-        access_token=prefs.aws_acccess_token,
+        access_token=prefs.aws_access_token,
         refresh_token=prefs.aws_refresh_token
     )
     await loop.run_in_executor(None,user.check_token)
-
     prefs.aws_token = user.id_token
-    prefs.aws_access_token = user.access_token_token
+    prefs.aws_access_token = user.access_token
     prefs.aws_refresh_token = user.refresh_token
     return user.id_token
+
+
+
 
 def refresh_id_token() -> None:
     """
     Token expired, getting new id token with refresh token.
-    The exact cause of failure is not important to the user so we just log it. 
+    The exact cause of failure is not important to the user so we just log it.
     """
+    from ..properties.properties import RendergatePreferences
 
     prefs: RendergatePreferences = RendergatePreferences.preferences()
 
@@ -113,4 +116,5 @@ def refresh_id_token() -> None:
         raise AttributeError()
 
     prefs.aws_token = user.id_token
+    prefs.aws_access_token = user.access_token
     prefs.aws_refresh_token = user.refresh_token

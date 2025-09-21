@@ -20,7 +20,7 @@ import boto3
 import asyncio
 from typing import Any
 from pathlib import PurePath, Path
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 from requests import Response  # requests is included in Blender 4.5
 from asyncio import AbstractEventLoop, Task
@@ -252,7 +252,7 @@ async def _set_client_and_credentials(context: Context, job: Job) -> None:
     """
 
     load_client=False
-    if job.download_credentials and datetime.now() > job.download_credentials.expiration:
+    if job.download_credentials and datetime.now(timezone.utc) > job.download_credentials.expiration:
         rendergate_logger.info("Client Expired, creating...")
         load_client=True
     elif job.download_client is None:
@@ -320,7 +320,7 @@ async def _set_download_credentials(context: Context, job: Job) -> None:
         access_key=credentials_obj.get("AccessKeyId"),
         secret_access_key=credentials_obj.get("SecretAccessKey"),
         session_token=credentials_obj.get("SessionToken"),
-        expiration=datetime.datetime.fromisoformat(credentials_obj.get("Expiration"))
+        expiration=datetime.fromisoformat(credentials_obj.get("Expiration"))
     )
 
     if None in asdict(job.download_credentials).values():
