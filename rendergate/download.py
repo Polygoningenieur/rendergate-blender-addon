@@ -20,6 +20,7 @@ import boto3
 import asyncio
 from typing import Any
 from pathlib import PurePath, Path
+from datetime import datetime
 from functools import partial
 from requests import Response  # requests is included in Blender 4.5
 from asyncio import AbstractEventLoop, Task
@@ -250,40 +251,40 @@ async def _set_client_and_credentials(context: Context, job: Job) -> None:
     creates client and credentials if they don't exist yet.
     """
 
-    try:
-        # no client, create one
-        if job.download_client is None:
-            rendergate_logger.info("No client, creating...")
+    load_client=False
+    if job.download_credentials and datetime.now() > job.download_credentials.expiration:
+        rendergate_logger.info("Client Expired, creating...")
+        load_client=True
+    elif job.download_client is None:
+        rendergate_logger.info("No client, creating...")
+        load_client=True
 
-            # no credentials to create client, get them
-            if (
-                job.download_credentials is None
-                or None in asdict(job.download_credentials).values()
-            ):
-                rendergate_logger.info("No creds, requesting...")
-                try:
-                    await _set_download_credentials(context, job)
-                except CredentialsError as e:
-                    rendergate_logger.error(f"Error getting credentials: {e}")
-                    # TODO what to do, retry?
-                    job.download_client = None
-                    return
-                else:
-                    rendergate_logger.info(
-                        f"New credentials: {str(job.download_credentials)[:100]}..."
-                    )
 
-            # create s3 client
+    if load_client:
+        # no credentials to create client, get them
+        rendergate_logger.info("requesting credentials...")
+        try:
+            await _set_download_credentials(context, job)
+        except CredentialsError as e:
+            rendergate_logger.error(f"Error getting credentials: {e}")
+            # TODO what to do, retry?
+            job.download_client = None
+            return
+        else:
+            rendergate_logger.info(
+                f"New credentials: {str(job.download_credentials)[:100]}..."
+            )
+        # create s3 client
+        try:
             job.download_client = boto3.client(
                 "s3",
                 aws_access_key_id=job.download_credentials.access_key,
                 aws_secret_access_key=job.download_credentials.secret_access_key,
                 aws_session_token=job.download_credentials.session_token,
             )
-
-    except Exception as err:
-        rendergate_logger.error(f"{err}")
-        job.download_client = None
+        except Exception as err:
+            rendergate_logger.error(f"{err}")
+            job.download_client = None
 
 
 async def _set_download_credentials(context: Context, job: Job) -> None:
@@ -319,7 +320,9 @@ async def _set_download_credentials(context: Context, job: Job) -> None:
         access_key=credentials_obj.get("AccessKeyId"),
         secret_access_key=credentials_obj.get("SecretAccessKey"),
         session_token=credentials_obj.get("SessionToken"),
+        expiration=datetime.datetime.fromisoformat(credentials_obj.get("Expiration"))
     )
+
     if None in asdict(job.download_credentials).values():
         message: str = f"Got invalid credentials: {job.download_credentials}"
         job.download_credentials = None

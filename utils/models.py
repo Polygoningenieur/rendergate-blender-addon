@@ -12,6 +12,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from pathlib import PurePath
 from typing import Any
@@ -31,11 +32,12 @@ class Image:
 
 @dataclass
 class S3Credentials:
-    bucket: str | None
-    basekey: str | None
-    access_key: str | None
-    secret_access_key: str | None
-    session_token: str | None
+    bucket: str
+    basekey: str
+    access_key: str
+    secret_access_key: str
+    session_token: str
+    expiration: datetime
 
 
 @dataclass
@@ -61,7 +63,7 @@ class Job:
     images: list[Image]
     frames: int
     active_download: bool
-    download_credentials: S3Credentials
+    download_credentials: S3Credentials | None
     download_client: Any
     selected: bool
 
