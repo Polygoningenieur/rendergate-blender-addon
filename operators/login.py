@@ -74,14 +74,9 @@ class RENDERGATE_OT_login(Operator, AsyncModalOperatorMixin):
 
         # set initial download folder
         if prefs.download_folder == "":
-
-            if bpy.data.is_saved:
-                file_dir: PurePath = PurePath(os.path.dirname(bpy.data.filepath))
-                prefs.download_folder = str(file_dir / PurePath("rendergate"))
-            else:
-                downloads_folder: Path = Path(Path.home()) / PurePath("rendergate")
-                downloads_folder.mkdir(exist_ok=True)
-                prefs.download_folder = str(downloads_folder)
+            downloads_folder: Path = Path(Path.home()) / PurePath("Downloads/rendergate")
+            downloads_folder.mkdir(exist_ok=True)
+            prefs.download_folder = str(downloads_folder)
             jobs._previous_download_folder = prefs.download_folder
 
         props.async_op_running = False

@@ -34,7 +34,7 @@ _jobs: list[Job] = []
 _previous_job: str = ""
 _previous_download_folder: str = ""
 
-
+JOB_REFRESH_RATE=30.0 # seconds
 def clear() -> None:
     """Clear jobs."""
 
@@ -155,7 +155,7 @@ def update_selected_job_timer(context: Context, job: Job) -> float | None:
         Stage.PAYING,
         Stage.RENDERING,
     ]:
-        return 5.0
+        return JOB_REFRESH_RATE
     else:
         return None
 

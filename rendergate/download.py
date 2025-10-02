@@ -63,8 +63,8 @@ def load_handler(file_path:str = ""):
     # keep reference so we can unregister anytime anywhere
     bpy.__rendergate_downloads = _check_for_downloads
 
-
-def _check_for_downloads() -> None:
+DOWNLOAD_REFRESH_RATE=30.0
+def _check_for_downloads() -> float|None:
     """
     Timer that periodically checks all jobs with active downloads
     and downloads images if there are any.
@@ -74,14 +74,12 @@ def _check_for_downloads() -> None:
 
     print("Periodic check for downloads...")
 
-    frequency: float = 15.0
-
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences()
     props: RendergateProperties = bpy.context.scene.rendergate_properties
 
     if not prefs.aws_token:
-        return frequency
+        return DOWNLOAD_REFRESH_RATE
 
     for job in jobs.get_all():
         # download images if the job is done or currently rendering
@@ -93,7 +91,7 @@ def _check_for_downloads() -> None:
     # reset stop download flag
     props.stop_download = False
 
-    return frequency
+    return DOWNLOAD_REFRESH_RATE
 
 
 async def _download_images(context: Context, job: Job):
