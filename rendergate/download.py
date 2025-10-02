@@ -175,6 +175,9 @@ async def _download_images(context: Context, job: Job):
         image.state = ImageState.DOWNLOADING
         try:
             await s3_download_file(job, key, file_dir, file_name)
+        except exceptions.ClientError as e:
+            image.state= ImageState.MISSING
+            rendergate_logger.info(f"Image {file_name} could not be downlaoded: {e}")
         except FileNotFoundError as e:
             image.state = ImageState.DIRNOTFOUND
             rendergate_logger.info(f"Image {file_name} could not be downlaoded: {e}")
@@ -349,4 +352,4 @@ async def s3_download_file(job: Job, key: str, file_dir: PurePath, file_name: st
         await loop.run_in_executor(None, download_file_partial)
     except FileNotFoundError as e:
         rendergate_logger.error(e)
-        raise FileNotFoundError(e)
+        raise e

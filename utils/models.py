@@ -52,7 +52,7 @@ class Job:
     project_name: str
     stage: Stage
     stage_icon: StageIcon
-    progress: str
+    progress: float
     cost_estimation: Decimal
     cost: Decimal
     time_estimation: float

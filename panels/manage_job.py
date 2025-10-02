@@ -98,10 +98,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                     icon="TEMP",
                 )
 
-            if not isinstance(selected_job.progress, float):
-                progress: int = 0.0
-            else:
-                progress: int = int(selected_job.progress * 100)
+            progress: int = int(selected_job.progress * 100)
             job_details.label(text=f"Render Progress: {progress}%", icon="SORTSIZE")
 
             # checkbox to say if job should be downloaded or not

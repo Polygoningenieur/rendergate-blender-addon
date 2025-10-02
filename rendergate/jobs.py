@@ -99,6 +99,7 @@ def update_job(
     job.download_client = download_client
     job.selected = selected
 
+    print("update_job",job.name,job.stage)
     return job
 
 
@@ -117,15 +118,13 @@ def get_selected_job(context: Context) -> Job | None:
 
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
-    try:
-        selected_job: Job = next(
-            (j for j in get_all() if j.identifier == prefs.jobs), None
-        )
-    except IndexError as e:
-        rendergate_logger.error(repr(e))
+    selected_job= next(
+        (j for j in get_all() if j.identifier == prefs.jobs), None
+    )
+    if selected_job is None:
+        rendergate_logger.error("no job selected")
         return None
-    else:
-        return selected_job
+    return selected_job
 
 
 def set_selected_render_job(context: Context, identifier: str) -> None:
@@ -138,9 +137,9 @@ def set_selected_render_job(context: Context, identifier: str) -> None:
     prefs.jobs = identifier
 
 
-def update_selected_job_timer(context: Context, job: Job) -> None:
+def update_selected_job_timer(context: Context, job: Job) -> float | None:
     """Updates the meta data / status of the currently selected render job."""
-
+    print("update_selected_job_timer", job.name, job.stage)
     try:
         loop: AbstractEventLoop = asyncio.get_event_loop()
         task: Task = loop.create_task(update_selected_job(context, job))
@@ -150,7 +149,7 @@ def update_selected_job_timer(context: Context, job: Job) -> None:
         return None
 
     # periodically update the job if we expect changes, otherwise only update once
-    if job.stage not in [
+    if job.stage in [
         Stage.INIT,
         Stage.CALCULATING,
         Stage.PAYING,
@@ -170,6 +169,7 @@ async def update_selected_job(context: Context, job: Job) -> None:
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
     # get rendergate jobs
+    print("update_selected_job", job.name)
     aws_token=await get_aws_token(context)
     response: Response | str = await rest_client.request(
         url=f"{props.rendergate_api_url}/project/{job.identifier}",
@@ -214,33 +214,21 @@ def construct_render_job(
     if stage == Stage.UPLOADED and job_data.get(time_est_key) is None:
         stage = Stage.CALCULATING
 
-    progress: float | dict = job_data.get("progress", "")
-    num_frames: int = 0
-    if from_update_api:
-        progress_amount_dict: float = progress.get("progress", {})
-        file_settings: dict = job_data.get("fileSettings", {})
-        start_frame: int = file_settings.get("start", 1)
-        stop_frame: int = file_settings.get("end", 0)
-        num_frames = stop_frame - start_frame + 1
-        if num_frames <= 0:
-            progress_amount: float = 0.0
-        else:
-            progress_amount: float = progress_amount_dict.get("current", 0) / num_frames
-    else:
-        progress_amount: float = job_data.get("progress", 0.0)
+    progress: dict = job_data.get("progressReport",{})
+    progress_amount_dict: dict = progress.get("progress", {})
+    num_frames = progress_amount_dict.get("total",0)
+    progress_amount = progress_amount_dict.get("percent",0)
 
     # API responses are not consitent for /project/{id} and /project
     # so we need to make a distinction
-    estimation_dict: dict = progress if from_update_api else job_data
+    estimation_dict: dict = progress
+
 
     # create decimals for the prices to not have floating point precision errors
     # and make sure we have enough precision to quantize
     decimal.getcontext().prec = 28
-    if from_update_api:
-        cost_est_dict: dict = estimation_dict.get("cost", {})
-        cost_estimation_number: float = cost_est_dict.get("total", 0.00)
-    else:
-        cost_estimation_number: float = estimation_dict.get("costEst", 0.00)
+    cost_est_dict: dict = estimation_dict.get("cost", {})
+    cost_estimation_number: float = cost_est_dict.get("total", 0.00)
     try:
         cost_estimation: Decimal = Decimal(f"{cost_estimation_number}")
         cost_estimation = cost_estimation.quantize(Decimal(".01"))
@@ -273,22 +261,16 @@ def construct_render_job(
     created_ago: str = humanize.naturaltime(date_time_local)
 
     # human readable time estimation
-    if from_update_api:
-        time_est_dict: dict = estimation_dict.get("time", {})
-        time_estimation: float = time_est_dict.get("total", 0.0) or 0.0
-    else:
-        time_estimation: float = estimation_dict.get("timeEst", 0.0) or 0.0
+    time_est_dict: dict = estimation_dict.get("time", {})
+    time_estimation: float = time_est_dict.get("total", 0.0) or 0.0
     time_estimation_delta: timedelta = timedelta(milliseconds=time_estimation)
     time_estimation_human: str = humanize.precisedelta(
         time_estimation_delta, minimum_unit="minutes"
     )
 
     # human readable time
-    if from_update_api:
-        time_est_dict: dict = estimation_dict.get("time", {})
-        time: float = time_est_dict.get("current", 0.0)
-    else:
-        time: float = estimation_dict.get("time", 0.0)
+    time_est_dict: dict = estimation_dict.get("time", {})
+    time: float = time_est_dict.get("current", 0.0)
     time_delta: timedelta = timedelta(milliseconds=time)
     time_human: str = humanize.precisedelta(time_delta, minimum_unit="minutes")
 
