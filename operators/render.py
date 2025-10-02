@@ -59,7 +59,6 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
 
         props: RendergateProperties = context.scene.rendergate_properties
         prefs: RendergatePreferences = RendergatePreferences.preferences(context)
-
         props.async_op_running = True
 
         props.render_job_progress_text = "10% - Sending..."
@@ -70,8 +69,8 @@ class RENDERGATE_OT_render(Operator, AsyncModalOperatorMixin):
 
         headers: dict = {"auth": aws_token}
         payload: dict = {
-            "fromBeginning": True,
-            "chips": float(props.render_credits),
+            "fromBeginning": False,
+            "chips": float(selected_job.cost_estimation-selected_job.cost),
         }
 
         # render the job
@@ -163,7 +162,7 @@ class RENDERGATE_OT_invoke_render(Operator):
 
         # apply the cost estimation to the render credits,
         # use string to avoid floating point error
-        props.render_credits = str(selected_job.cost_estimation)
+        props.render_credits = str(selected_job.cost_estimation-selected_job.cost)
 
         return context.window_manager.invoke_props_dialog(operator=self)
 

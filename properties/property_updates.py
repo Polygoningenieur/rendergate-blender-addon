@@ -75,6 +75,7 @@ def update_selected_job(self, context: Context) -> None:
         selected_job.selected = True
         # set the unified active download property to the value that is set for this job
         prefs.active_download = selected_job.active_download
+        jobs.check_for_job_updates(context)
 
 
 def update_active_download(self, context: Context) -> None:

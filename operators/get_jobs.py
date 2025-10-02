@@ -143,12 +143,12 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
             if not isinstance(job_data, dict):
                 continue
 
-            identifier: str = job_data.get("id")
+            identifier:str|None = job_data.get("id")
             if identifier is None:
                 continue
 
             # if job identifier exists job gets updated
-            updated_job: Job = jobs.update_job(job_data, index, identifier)
+            updated_job = jobs.update_job(job_data, index, identifier)
 
             # job is new
             if updated_job is None:
@@ -170,6 +170,8 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
 
         props.getting_jobs = False
         props.async_op_running = False
+
+        jobs.check_for_job_updates(context)
         try:
             if context:
                 context.area.tag_redraw()

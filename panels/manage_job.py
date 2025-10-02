@@ -78,8 +78,12 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
                 text=f"{selected_job.stage}", icon=selected_job.stage_icon
             )
             if selected_job.cost_estimation > Decimal("0.00"):
+                if selected_job.cost>Decimal("0.00"):
+                    frac=f"${selected_job.cost}/${selected_job.cost_estimation}"
+                else:
+                    frac=f"${selected_job.cost_estimation}"
                 job_details.label(
-                    text=f"Cost Estimation: ${selected_job.cost_estimation}",
+                    text=f"Cost Estimation: {frac}",
                     icon="TAG",
                 )
             else:
