@@ -18,7 +18,9 @@
 import bpy
 from typing import Any
 from bpy.types import Operator, Context
-from requests import Response  # requests is included in Blender 4.5
+from requests import Response
+
+from ..config import RENDERGATE_API  # requests is included in Blender 4.5
 from ..utils.async_loop import AsyncModalOperatorMixin
 from ..utils import rest_client
 from ..utils.utils import class_to_register, catch_exception
@@ -104,7 +106,7 @@ class RENDERGATE_OT_get_jobs(Operator, AsyncModalOperatorMixin):
 
         # get rendergate jobs
         response: Response | str = await rest_client.request(
-            url=f"{props.rendergate_api_url}/project",
+            url=f"{RENDERGATE_API}/project",
             headers=headers,
             request_type="GET",
         )

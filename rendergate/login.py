@@ -21,13 +21,7 @@ from warrant import Cognito
 from bpy.types import Context
 from asyncio import AbstractEventLoop
 from ..utils.global_vars import rendergate_logger
-
-
-# aws authentication
-# TODO change to production
-REGION: str = "us-east-2"
-USER_POOL_ID: str = "us-east-2_0iJztlRUB"
-USER_POOL_WEB_CLIENT_ID: str = "6m7eldka3q9f20nmev7smovnf6"
+from ..config import REGION,USER_POOL_ID,USER_POOL_WEB_CLIENT_ID
 
 
 async def login(context: Context) -> None:

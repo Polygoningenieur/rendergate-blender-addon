@@ -1,5 +1,5 @@
 SRC_DIRS := icons operators panels properties rendergate utils wheels
-ROOT_FILES := __init__.py LICENSE.txt blender_manifest.toml
+ROOT_FILES := __init__.py config.py LICENSE.txt blender_manifest.toml
 EXCLUDE_FILES := .gitignore README.md
 EXCLUDE_PATTERNS := __pycache__ *.pyc
 BUILD_DIR := __build__/rendergate

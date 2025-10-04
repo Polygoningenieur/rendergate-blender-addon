@@ -18,6 +18,7 @@ from requests import Response  # requests is included in Blender 4.5
 from asyncio import AbstractEventLoop, Task
 import decimal
 from decimal import Decimal, InvalidOperation
+from ..config import RENDERGATE_API, JOB_REFRESH_RATE
 import humanize
 from dateutil import tz
 from datetime import datetime, tzinfo, timedelta
@@ -34,7 +35,6 @@ _jobs: list[Job] = []
 _previous_job: str = ""
 _previous_download_folder: str = ""
 
-JOB_REFRESH_RATE=30.0 # seconds
 def clear() -> None:
     """Clear jobs."""
 
@@ -99,7 +99,6 @@ def update_job(
     job.download_client = download_client
     job.selected = selected
 
-    print("update_job",job.name,job.stage)
     return job
 
 
@@ -122,7 +121,7 @@ def get_selected_job(context: Context) -> Job | None:
         (j for j in get_all() if j.identifier == prefs.jobs), None
     )
     if selected_job is None:
-        rendergate_logger.error("no job selected")
+        # rendergate_logger.error("no job selected")
         return None
     return selected_job
 
@@ -139,7 +138,6 @@ def set_selected_render_job(context: Context, identifier: str) -> None:
 
 def update_selected_job_timer(context: Context, job: Job) -> float | None:
     """Updates the meta data / status of the currently selected render job."""
-    print("update_selected_job_timer", job.name, job.stage)
     try:
         loop: AbstractEventLoop = asyncio.get_event_loop()
         task: Task = loop.create_task(update_selected_job(context, job))
@@ -169,10 +167,9 @@ async def update_selected_job(context: Context, job: Job) -> None:
     prefs: RendergatePreferences = RendergatePreferences.preferences(context)
 
     # get rendergate jobs
-    print("update_selected_job", job.name)
     aws_token=await get_aws_token(context)
     response: Response | str = await rest_client.request(
-        url=f"{props.rendergate_api_url}/project/{job.identifier}",
+        url=f"{RENDERGATE_API}/project/{job.identifier}",
         headers={"auth": aws_token},
         request_type="GET",
     )

@@ -14,6 +14,8 @@
 import logging
 from logging import Logger, Formatter, StreamHandler
 
+from ..config import LOGGING_LEVEL
+
 
 def _get_rendergate_handler() -> StreamHandler:
     """Set up the format of the streamhandler and return the handler."""
@@ -31,7 +33,7 @@ def _get_rendergate_handler() -> StreamHandler:
 rendergate_logger: Logger = logging.getLogger(__name__)
 if not len(rendergate_logger.handlers):
     rendergate_logger.addHandler(_get_rendergate_handler())
-rendergate_logger.setLevel(logging.INFO)
+rendergate_logger.setLevel(LOGGING_LEVEL)
 
 # the bpy.utils.previews collection used to display custom images in the UI
 rendergate_images: dict = {}

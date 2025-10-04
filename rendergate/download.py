@@ -29,6 +29,8 @@ from bpy.types import Context
 from json.decoder import JSONDecodeError
 from botocore import exceptions
 from dataclasses import asdict
+
+from ..config import RENDERGATE_API,DOWNLOAD_REFRESH_RATE
 from . import jobs
 from .login import get_aws_token
 from ..utils import utils, rest_client
@@ -45,7 +47,7 @@ class CredentialsError(Exception):
 def load_handler(file_path:str = ""):
     """On file load, add a timer that periodically checks for downloads."""
 
-    print(f"Load Handler: {file_path = }")
+    rendergate_logger.info(f"Load Handler: {file_path = }")
 
     try:
         bpy.app.timers.unregister(bpy.__rendergate_downloads)
@@ -58,12 +60,11 @@ def load_handler(file_path:str = ""):
     except Exception as e:
         rendergate_logger.error(f"Could not register download timer: {e}")
     else:
-        print("Download timer registered.")
+        rendergate_logger.info("Download timer registered.")
 
     # keep reference so we can unregister anytime anywhere
     bpy.__rendergate_downloads = _check_for_downloads
 
-DOWNLOAD_REFRESH_RATE=30.0
 def _check_for_downloads() -> float|None:
     """
     Timer that periodically checks all jobs with active downloads
@@ -72,7 +73,7 @@ def _check_for_downloads() -> float|None:
 
     from ..properties.properties import RendergateProperties, RendergatePreferences
 
-    print("Periodic check for downloads...")
+    rendergate_logger.info("Periodic check for downloads...")
 
     loop: AbstractEventLoop = asyncio.get_event_loop()
     prefs: RendergatePreferences = RendergatePreferences.preferences()
@@ -84,7 +85,7 @@ def _check_for_downloads() -> float|None:
     for job in jobs.get_all():
         # download images if the job is done or currently rendering
         if job.stage in [Stage.FINISHED, Stage.RENDERING] and job.active_download:
-            print(f"Download images for {job.name}...")
+            rendergate_logger.info(f"Download images for {job.name}...")
             task: Task = loop.create_task(_download_images(bpy.context, job))
             bpy.app.timers.register(lambda: utils.run_task_on_main_thread(task))
 
@@ -183,7 +184,7 @@ async def _download_images(context: Context, job: Job):
             image.state = ImageState.DOWNLOADED
             rendergate_logger.info(f"Downloaded image {file_name}.")
 
-    print(
+    rendergate_logger.info(
         f"{job.name} IMAGES: {len(job.images)}\nMISSING: {len([i for i in job.images if i.state == ImageState.MISSING])}\nDOWNLOADED: {len([i for i in job.images if i.state == ImageState.DOWNLOADED])}\nDOWNLOADING: {len([i for i in job.images if i.state == ImageState.DOWNLOADING])}\nDIRNOTFOUND: {len([i for i in job.images if i.state == ImageState.DIRNOTFOUND])}"
     )
 
@@ -298,7 +299,7 @@ async def _set_download_credentials(context: Context, job: Job) -> None:
     aws_token=await get_aws_token(context)
     # download render job
     response: Response | str = await rest_client.request(
-        url=f"{props.rendergate_api_url}/project/{job.identifier}/downloadPerm",
+        url=f"{RENDERGATE_API}/project/{job.identifier}/downloadPerm",
         headers={"auth": aws_token},
         request_type="GET",
     )

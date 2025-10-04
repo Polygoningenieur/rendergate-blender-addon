@@ -45,14 +45,6 @@ class RendergateProperties(PropertyGroup):
         options={"HIDDEN"},
     )
 
-    # TODO change to production
-    rendergate_api_url: StringProperty(
-        name="Rendergate API URL",
-        description="The URL of the rendergate API",
-        default="https://vhvr3fdsg5.execute-api.us-east-2.amazonaws.com/default",
-        options={"HIDDEN"},
-    )
-
     blend_file_path: StringProperty(
         name="Blend File Path",
         description="The absolute path of the blend-file.",

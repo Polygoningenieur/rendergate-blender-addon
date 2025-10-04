@@ -15,6 +15,7 @@
 import bpy
 from decimal import Decimal
 from bpy.types import Panel, Context, UILayout
+from ..config import URL
 from .panel import RendergatePanel
 from ..utils.utils import class_to_register
 from ..utils.models import Job
@@ -118,7 +119,7 @@ class RENDERGATE_PT_manage_job(RendergatePanel, Panel):
         )
         if selected_job:
             # different for production and dev
-            open_web.url = f"https://rendergate.ch/en/details/{selected_job.identifier}"
+            open_web.url = f"{URL}/en/details/{selected_job.identifier}"
         else:
             open_button.enabled = False
 

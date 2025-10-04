@@ -13,6 +13,7 @@
 
 
 import bpy
+from ..config import RENDERGATE_API
 import httpx
 from typing import Any, Callable
 from pathlib import PurePath
@@ -117,7 +118,7 @@ class RENDERGATE_OT_download_zip(Operator, AsyncModalOperatorMixin):
 
         # download render job
         response: Response | str = await rest_client.request(
-            url=f"{props.rendergate_api_url}/project/{selected_job.identifier}/download",
+            url=f"{RENDERGATE_API}/project/{selected_job.identifier}/download",
             headers=headers,
             request_type="POST",
         )

@@ -85,12 +85,6 @@ def get_file_size(file_path: str) -> int:
 
     try:
         return os.path.getsize(file_path)
-    except OSError:
-        rendergate_logger.error(traceback.format_exc())
-        return 0
-    except FileNotFoundError as e:
-        rendergate_logger.error(traceback.format_exc())
-        return 0
     except Exception:
         rendergate_logger.error(traceback.format_exc())
         return 0

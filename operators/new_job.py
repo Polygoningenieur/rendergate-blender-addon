@@ -19,7 +19,9 @@ import math
 from bpy.props import BoolProperty
 from bpy.types import Operator, Context, Event, UILayout
 from typing import Any
-from requests import Response  # requests is included in Blender 4.5
+from requests import Response
+
+from ..config import RENDERGATE_API  # requests is included in Blender 4.5
 from .get_jobs import RENDERGATE_OT_get_jobs
 from ..rendergate import jobs
 from ..rendergate.login import get_aws_token
@@ -107,7 +109,7 @@ class RENDERGATE_OT_new_job(Operator, AsyncModalOperatorMixin):
 
         # create rendergate job/project
         response: Response | str = await rest_client.request(
-            url=f"{props.rendergate_api_url}/project",
+            url=f"{RENDERGATE_API}/project",
             headers=headers,
             payload=payload,
             request_type="POST",
